@@ -49,3 +49,5 @@ electoral_votes = {'Alabama': 9,
                    'West Virginia': 5,
                    'Wisconsin': 10,
                    'Wyoming': 3}
+
+total_electoral_votes = sum(electoral_votes.values())
