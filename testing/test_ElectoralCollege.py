@@ -21,3 +21,6 @@ class TestElectoralCollege(TestCase):
                    'District of Columbia': c2}
         analysis = self.ec.analyze_simulation(results)
         self.assertEqual(analysis, {c1: 18, c2: 58})
+
+    def test_get_winner(self):
+        pass
