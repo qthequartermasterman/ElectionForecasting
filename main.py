@@ -13,4 +13,4 @@ multiple_simulations = ec.run_simulations(num_simulations, candidates, verbose=T
 print()
 print(f'{num_simulations} Simulations with Polling Data')
 print('Raw data:', multiple_simulations)
-print('Probability:', {key: value / num_simulations for key, value in multiple_simulations.items()})
+print('Probability:', {key: f'{round(100*value / num_simulations, 2)}%' for key, value in multiple_simulations.items()})
