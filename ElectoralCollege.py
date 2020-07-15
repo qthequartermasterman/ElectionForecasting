@@ -1,7 +1,7 @@
-from electoral_votes import electoral_votes, total_electoral_votes
-from StateFunction import State
 from Candidate import Candidate
 from PollingData import PollingData
+from StateFunction import State
+from electoral_votes import electoral_votes
 
 
 def dict_sum(a, b):

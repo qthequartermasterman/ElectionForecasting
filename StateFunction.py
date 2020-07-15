@@ -1,7 +1,8 @@
 import random
+
 from Candidate import Candidate
-import rcp  # RealClearPolitics poll data
 from PollingData import PollingData
+
 
 class State:
     def __init__(self, name: str, polling_data=None, population=None):

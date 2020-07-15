@@ -1,14 +1,18 @@
 import csv
-import urllib.request
 import os
-import time
-from electoral_votes import electoral_votes
-import rcp
-from Candidate import Candidate
 import random
+import time
+import urllib.request
+
+import rcp
+
+from Candidate import Candidate
+from electoral_votes import electoral_votes
+
 
 class PollingData:
     """Handles downloading and sorting all the polling data from various sources online."""
+
     def __init__(self):
         self.fivethirtyeight_polling_data_url = 'https://projects.fivethirtyeight.com/2020-general-data/presidential_poll_averages_2020.csv'
         self.local_uri_538 = 'data/fivethirtyeight.csv'
@@ -40,7 +44,7 @@ class PollingData:
                         else:
                             state_name = row['state']
                         candidate_name = row['candidate_name']
-                        polling_average = float(row['pct_trend_adjusted'])/100
+                        polling_average = float(row['pct_trend_adjusted']) / 100
                         self.polling_dictionary[(state_name, candidate_name)] = polling_average
         return self.polling_dictionary
 
@@ -82,7 +86,7 @@ class PollingData:
             else:
                 poll = self.estimate_polls(state_name, candidate)
             if noise:
-                poll += self.margin_of_error * random.gauss(0, 1)/2
+                poll += self.margin_of_error * random.gauss(0, 1) / 2
             distribution.append(poll)
 
             '''
@@ -121,4 +125,3 @@ class PollingData:
         else:
             national_polling_average = polling_dictionary[('National', candidate.name)]
             return national_polling_average
-
