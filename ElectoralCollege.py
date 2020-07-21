@@ -2,7 +2,7 @@ from Candidate import Candidate
 from PollingData import PollingData
 from StateFunction import State
 from electoral_votes import electoral_votes
-
+from datetime import date
 
 def dict_sum(a, b):
     temp = dict()
@@ -44,15 +44,34 @@ class ElectoralCollege:
                 return cand
         return None
 
+    def save_simulation_to_csv(self, candidates: [Candidate], candidate_sums, simulation_number, winner):
+        today_date = date.today()
+        row = str(simulation_number) + ', '
+        for candidate in candidates:
+            row += str(candidate) + ', '
+            if candidate in candidate_sums.keys():
+                row += str(candidate_sums[candidate]) + ', '
+            else:
+                row += ', '
+        row += f'Winner, {winner}\n'
+
+        with open(f'data/results/results{str(today_date)}.csv', 'a+') as f:
+            f.write(row)
+
     def run_simulations(self, num_simulations: int, candidates: [Candidate], verbose=False):
         candidate_win_counts = {cand: 0 for cand in candidates}
         candidate_win_counts[None] = 0  # Draws are totally feasible
-        candidate_win_counts[Candidate('Write-in', 'I')] = 0
+        write_in_cand = Candidate('Write-in', 'I')
+        candidate_win_counts[write_in_cand] = 0
         for i in range(num_simulations):
             results = self.run_one_simulation(candidates)
             candidate_sums = self.analyze_simulation(results)
             candidate_win_counts[self.get_winner(candidate_sums)] += 1
             if verbose:
-                print(f'Simulation {i}: ', candidate_sums, 'Winner:', self.get_winner(candidate_sums))
+                winner = self.get_winner(candidate_sums)
+                print(f'Simulation {i}: ', candidate_sums, 'Winner:', winner)
+                self.save_simulation_to_csv(candidates, candidate_sums, i, winner)
+                if write_in_cand in candidate_sums.keys():
+                    print(f'Independent won a state with {candidate_sums[write_in_cand]} votes')
 
         return candidate_win_counts
