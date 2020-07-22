@@ -33,6 +33,8 @@ class ElectoralCollege:
                 candidate_sums[winner] += self.electoral_votes[state]
             else:
                 candidate_sums[winner] = self.electoral_votes[state]
+            if winner.party not in ['D', 'R']:
+                print(f'\t{winner} won {state}, with {self.electoral_votes[state]} electoral votes.')
         return candidate_sums
 
     def get_winner(self, candidate_sums: {Candidate: int}):

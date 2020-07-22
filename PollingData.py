@@ -17,7 +17,7 @@ class PollingData:
         self.fivethirtyeight_polling_data_url = 'https://projects.fivethirtyeight.com/2020-general-data/presidential_poll_averages_2020.csv'
         self.local_uri_538 = 'data/fivethirtyeight.csv'
         self.local_uri_2016_results = 'data/2016results.csv'
-        self.local_uri_similarity = 'data/StateSimilarityDailyKos.csv'
+        self.local_uri_similarity = 'data/StateSimilarityClosest.csv'
 
         # electoral_votes is a dict with state names as keys, we also want the National Poll data, for good measure
         self.list_of_state_names = list(electoral_votes.keys()) + ['National']

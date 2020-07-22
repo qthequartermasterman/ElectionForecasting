@@ -31,6 +31,12 @@ class State:
             else:
                 candidate_sums[vote] = 1
         winner = max(candidate_sums, key=candidate_sums.get)
+        if winner.party not in ['D', 'R']:
+            print(f'\n\t{winner} won {self.name}, with distribution:')
+            print('\t', candidate_sums)
+            print('\tPercentage:',
+                  {key: f'{round(100 * value / sum(candidate_sums.values()), 2)}%' for key, value in candidate_sums.items()})
+            print('\tPolling Data:', {can: val for can, val in zip(candidates, distribution)})
         return winner
 
     def get_winner(self, candidates: [Candidate]) -> Candidate:
