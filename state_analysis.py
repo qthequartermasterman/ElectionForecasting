@@ -21,11 +21,26 @@ header_row = ', '.join(['State'] + [f'PCA Dim {i}' for i in range(number_of_PCA_
 np.savetxt('data/StateEncodedVectors.csv', labeled_transformed_data, delimiter=', ',
            fmt='%s', header=header_row, comments='')
 
+with open('data/StateSimilarityScores.csv', 'w+') as f, open('data/StateSimilarityClosest.csv', 'w+') as g:
+    f.write(', '.join(['State'] + list_of_states + ['\n']))
+    g.write('State,Closest1,Closest2,Closest3\n')
 
-for i in range(len(list_of_states)):
-    for j in range(len(list_of_states)):
-        dis = linalg.norm(transformed_data[j]-transformed_data[i])
-        print(list_of_states[j], list_of_states[i], dis)
+    for i in range(len(list_of_states)):
+        row = f'{list_of_states[i]}, '
+        scores = []
+        for j in range(len(list_of_states)):
+            dis = linalg.norm(transformed_data[j] - transformed_data[i])
+            print(list_of_states[j], list_of_states[i], dis)
+            scores.append(dis)
+        row = ', '.join([f'{list_of_states[i]}'] + [str(score) for score in scores] + ['\n'])
+        f.write(row)
+
+        # Get a slice of the 3 smallest numbers. We skip the first one which is the same state, since it's norm is 0
+        closest_3 = sorted(zip(scores, list_of_states), reverse=False)[1:4]
+        closest_3 = [entry[1] for entry in closest_3]
+        closest_3_row = ', '.join([list_of_states[i]] + closest_3 + ['\n'])
+        g.write(closest_3_row)
+
 
 # Create plot
 polling_data = PollingData.PollingData()
