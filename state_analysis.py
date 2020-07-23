@@ -11,7 +11,7 @@ list_of_states = ['National']+list(electoral_votes.keys())
 state_data_standardized = np.genfromtxt('data/StandardizedDemographics.csv', delimiter=',', skip_header=True,
                                         usecols=range(1, 29))
 
-number_of_PCA_dimensions = 4
+number_of_PCA_dimensions = 10
 pca_instance = sklearn.decomposition.PCA(number_of_PCA_dimensions)
 pca_instance.fit(state_data_standardized)
 

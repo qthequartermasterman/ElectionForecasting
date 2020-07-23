@@ -8,7 +8,7 @@ class State:
     def __init__(self, name: str, polling_data=None, population=None):
         self.name = name
         self.polling_data = polling_data or PollingData()
-        self.population = population or 100
+        self.population = population or 250
 
     def get_winner_random(self, candidates: [Candidate]) -> Candidate:
         return random.choice(candidates)

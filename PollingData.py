@@ -25,7 +25,7 @@ class PollingData:
         self.results2016 = {}
         self.similar_states = {}
 
-        self.margin_of_error = .05
+        self.margin_of_error = .04
 
     def download_five_thirty_eight_data(self):
         """Downloads the most recent polling data from fivethirtyeight's github page.
