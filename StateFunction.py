@@ -11,6 +11,7 @@ class State:
         self.population = population or 250
 
     def get_winner_random(self, candidates: [Candidate]) -> Candidate:
+        """Chooses a random candidate as winner with uniform distribution"""
         return random.choice(candidates)
 
     def get_vote(self, candidates: [Candidate], distribution: [float]) -> Candidate:

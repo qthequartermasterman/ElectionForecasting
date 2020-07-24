@@ -1,3 +1,7 @@
+"""Dict that stores the number of electoral votes of each State"""
+"""Note: 'State' in this context refers to any state or region that holds electoral votes.
+This includes all 50 states, the District of Columbia, and the congressional districts in Maine and Nebraska."""
+
 electoral_votes = {'Alabama': 9,
                    'Alaska': 3,
                    'Arizona': 11,

@@ -113,7 +113,7 @@ class PollingData:
         for candidate in candidates:
             polls_data = self.get_polling_data(state_name, candidate)
             if polls_data:
-                poll = .75 * polls_data + .25 * self.estimate_polls(state_name, candidate)
+                poll = .80 * polls_data + .20 * self.estimate_polls(state_name, candidate)
             else:
                 poll = self.estimate_polls(state_name, candidate)
             if noise:
