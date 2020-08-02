@@ -2,12 +2,15 @@ import csv
 import os
 import random
 import time
+from datetime import date
 import urllib.request
+import math
 
 #import rcp
 
 from Candidate import Candidate
 from electoral_votes import electoral_votes
+import numpy as np
 
 
 class PollingData:
@@ -26,14 +29,16 @@ class PollingData:
         self.similar_states = {}
 
         self.margin_of_error = .04
+        self.bayesian_sd_polls = 0
 
     def download_five_thirty_eight_data(self):
         """Downloads the most recent polling data from fivethirtyeight's github page.
         The URL is stored in self.fivethirtyeight_polling_data_url
 
         Takes no parameters and returns nothing."""
-        if not os.path.exists(self.local_uri_538) or time.time() - os.path.getmtime(self.local_uri_538) > 86400:
-            # Update files that don't exist or that are older than 86400s (24 hrs).
+        midnight_this_morning = (int(time.time() // 86400)) * 86400
+        if not os.path.exists(self.local_uri_538) or os.path.getmtime(self.local_uri_538) < midnight_this_morning:
+            # Update files that don't exist or that are older than midnight
             # If it exits and is not old, then we shouldn't download it again.
             urllib.request.urlretrieve(self.fivethirtyeight_polling_data_url, self.local_uri_538)
 
@@ -76,7 +81,7 @@ class PollingData:
             with open(self.local_uri_2016_results, 'r') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    self.results2016[row['State']] = {'D': row['D'], 'R': row['R']}
+                    self.results2016[row['State']] = {'D': row['D'], 'R': row['R'], 'L': row['L'], 'G': row['G']}
         return self.results2016
 
     def fill_rcp_polling_dictionary(self, candidates):
@@ -111,6 +116,7 @@ class PollingData:
         polling_dictionary = self.get_polling_dictionary()
         distribution = []
         for candidate in candidates:
+
             polls_data = self.get_polling_data(state_name, candidate)
             if polls_data:
                 poll = .80 * polls_data + .20 * self.estimate_polls(state_name, candidate)
@@ -118,6 +124,8 @@ class PollingData:
                 poll = self.estimate_polls(state_name, candidate)
             if noise:
                 poll += self.margin_of_error * random.gauss(0, 1) / 2
+
+            #poll = self.estimate_polls_bayesian(state_name, candidate)
             distribution.append(poll)
 
             '''
@@ -148,7 +156,7 @@ class PollingData:
         else:
             return None
 
-    def estimate_polls(self, state_name: str, candidate: Candidate):
+    def estimate_polls(self, state_name: str, candidate: Candidate) -> float:
         """In instances where polling data does not currently exist for a state, we can estimate it using historical
         trends, correlated states, and/or the national average.
 
@@ -163,7 +171,7 @@ class PollingData:
         polling_dictionary = self.get_polling_dictionary()
         results2016 = self.fill_2016_results()
 
-        if candidate.party in ['D', 'R']:
+        if candidate.party in ['D', 'R', 'L', 'G']:
             previous_result = float(results2016[state_name][candidate.party])
             average_of_similar_states = self.get_average_of_similar_states(state_name, candidate)
             if average_of_similar_states:
@@ -175,3 +183,72 @@ class PollingData:
         else:
             national_polling_average = polling_dictionary[('National', candidate.name)]
             return national_polling_average
+
+    def get_standard_deviation_of_polls(self, day=date.today()):
+        """Linear Interpolatation of emperical standard deviations of how polling data predicts the result
+        on a given date.
+
+        Calculated in the original paper using partial pooled historical data. Instead of recreating that, we
+        interpolate their data.
+
+        Based on methodology described in "Bayesian Combination of State Polls and Election Forecasts" (Lock & Gelman 2010)
+        TODO: Although Section 2 of Lock&Gelman suggests this is how they perform their simulations, the actual results in Section 4 suggest this depends on the state
+
+        Lock, Kari, and Andrew Gelman. "Bayesian combination of state polls and election forecasts." Political Analysis
+        18.3 (2010): 337-348.
+
+        :param day: datetime.date of the day of the poll
+        :return: stanard deviation of how the poll predicts the final result
+        """
+        if self.bayesian_sd_polls:
+            return self.bayesian_sd_polls
+        else:
+            election = date(2020, 11, 3)
+            days_to_election = (election - day).days  # Number of days until the election
+            dates = np.array([(election - date(2020, 11, 1)).days,
+                              (election - date(2020, 8, 1)).days,
+                              (election - date(2020, 5, 1)).days,
+                              (election - date(2020, 2, 1)).days])
+            sd_to_interpolate = np.array([.014, .022, .03, .038])
+            self.bayesian_sd_polls = float(np.interp(days_to_election, dates, sd_to_interpolate))
+            return self.bayesian_sd_polls
+
+
+    def estimate_polls_bayesian(self, state_name: str, candidate: Candidate) -> float:
+        """
+
+        Based on methodology described in "Bayesian Combination of State Polls and Election Forecasts" (Lock & Gelman 2010)
+
+        Lock, Kari, and Andrew Gelman. "Bayesian combination of state polls and election forecasts." Political Analysis
+        18.3 (2010): 337-348.
+
+        :param state_name: a string containing the name of the state whose estimated polling average we want
+        :param candidate: a Candidate object representing the candidate
+        :returns: a float between 0 and 1 representing the estimated polling percentage"""
+        results2016 = self.fill_2016_results()
+
+        if candidate.party in ['D', 'R']:
+            current_state_poll = self.get_polling_data(state_name, candidate)
+            current_national_poll = self.get_polling_data('National', candidate)
+            if current_state_poll is None:
+                return self.estimate_polls(state_name, candidate)
+            # We can use bayesian updating using weighted poll data.
+            # For more details see Equation (5) in Lock&Gelman
+
+            previous_state = float(results2016[state_name][candidate.party])
+            previous_national = float(results2016['National'][candidate.party])
+            d2016 = previous_state - previous_national
+
+            var_poll_given_result = self.get_standard_deviation_of_polls() ** 2  # Square of the interpolated SD
+            #var_poll_given_result = .06 ** 2
+            var_result = .033 ** 2  # Currently just the empirical SD that Lock&Gelman found by simulation.
+            # TODO: Calculate a var_result independently
+
+            mean_numerator = (current_state_poll/var_poll_given_result + (d2016 + current_national_poll)/var_result)
+            mean_denominator = (1/var_poll_given_result + 1/var_result)
+            mean = mean_numerator/mean_denominator
+            variance = 1/(1/var_poll_given_result + 1/var_result)
+            sd = math.sqrt(variance)
+            return random.gauss(mean, sd)
+        else:
+            return self.estimate_polls(state_name, candidate)

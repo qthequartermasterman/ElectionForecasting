@@ -2,7 +2,8 @@ from Candidate import Candidate
 from ElectoralCollege import ElectoralCollege
 from PollingData import PollingData
 
-candidates_names = [('Joseph R. Biden Jr.', 'D', 'Biden'), ('Donald Trump', 'R', 'Trump')]
+candidates_names = [('Joseph R. Biden Jr.', 'D', 'Biden'), ('Donald Trump', 'R', 'Trump'),
+                    ('Jo Jorgensen', 'L', 'Jorgensen'), ('Howie Hawkins', 'G', 'Hawkins')]
 candidates = [Candidate(*can) for can in candidates_names]
 
 num_simulations = 20000
