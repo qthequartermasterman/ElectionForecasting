@@ -55,3 +55,21 @@ electoral_votes = {'Alabama': 9,
                    'Wyoming': 3}
 
 total_electoral_votes = sum(electoral_votes.values())
+
+list_of_battleground_state_names = ['Florida',
+                                    'Pennsylvania',
+                                    'Wisconsin',
+                                    'North Carolina',
+                                    'Michigan',
+                                    'Ohio',
+                                    'Minnesota',
+                                    'Iowa',
+                                    'Arizona',
+                                    'Nevada',
+                                    'Texas',
+                                    'Georgia',
+                                    'Virginia',
+                                    'New Hampshire',
+                                    'Maine',
+                                    'Colorado',
+                                    'New Mexico']

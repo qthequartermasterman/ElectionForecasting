@@ -5,11 +5,12 @@ import time
 from datetime import date
 import urllib.request
 import math
+import rcp
 
 #import rcp
 
 from Candidate import Candidate
-from electoral_votes import electoral_votes
+from electoral_votes import electoral_votes, list_of_battleground_state_names
 import numpy as np
 
 
@@ -24,11 +25,12 @@ class PollingData:
 
         # electoral_votes is a dict with state names as keys, we also want the National Poll data, for good measure
         self.list_of_state_names = list(electoral_votes.keys()) + ['National']
+        self.list_of_battleground_state_names = list_of_battleground_state_names
         self.polling_dictionary = {}
         self.results2016 = {}
         self.similar_states = {}
 
-        self.margin_of_error = .04
+        self.margin_of_error = .06
         self.bayesian_sd_polls = 0
 
     def download_five_thirty_eight_data(self):
@@ -46,13 +48,13 @@ class PollingData:
         """Converts the fivethirtyeight polling data stored on disk to a python dictionary in memory for later use.
         Takes no parameters.
         :returns the dictionary with the polling data"""
-        if not len(self.polling_dictionary):
+        if len(self.polling_dictionary) < len(self.list_of_state_names):
             self.download_five_thirty_eight_data()
             with open(self.local_uri_538, 'r') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
                     if (row['state'], row['candidate_name']) not in self.polling_dictionary.keys():
-                        # Fivethirtyeight reports Nebraska as 'NE-2', since it has multiple electoral districts
+                        # Fivethirtyeight currently reports Nebraska as 'NE-2', since it has multiple electoral districts
                         if row['state'] == 'NE-2':
                             state_name = 'Nebraska'
                         else:
@@ -86,20 +88,29 @@ class PollingData:
 
     def fill_rcp_polling_dictionary(self, candidates):
         # Try RealClearPolitics for polling data
-        for state in set(self.list_of_state_names).difference([key[0] for key in self.polling_dictionary.keys()]):
-            for candidate in candidates:
-                raw_polling_data = rcp.get_polls(candidate=candidate.name, state=state)
-                if len(raw_polling_data):
-                    poll_url = raw_polling_data[0]['url']
-                    polls_data = rcp.get_poll_data(poll_url)[0]['data']
-                    for poll in polls_data:
-                        if poll['Poll'] == 'RCP Average':
-                            for cand in candidates:
-                                if f'{cand.short_name} ({cand.party})' in poll.keys():
-                                    self.polling_dictionary[(state, cand.name)] = float(poll[str(cand)]) / 100
+        for state in set(self.list_of_battleground_state_names).difference([key[0] for key in self.polling_dictionary.keys()]):
+            for state in set(self.list_of_battleground_state_names):
+                print(f'Current states: {[key[0] for key in self.polling_dictionary.keys()]}')
+                print(f'Retrieving {state}')
+                for candidate in candidates:
+                    print(f'\tRetrieving {state}, {candidate.name}')
+                    raw_polling_data = rcp.get_polls(candidate=candidate.short_name, state=state)
+                    if len(raw_polling_data):
+                        poll_url = raw_polling_data[0]['url']
+                        polls_data = rcp.get_poll_data(poll_url)[0]['data']
+                        for poll in polls_data:
+                            if poll['Poll'] == 'RCP Average':
+                                for cand in candidates:
+                                    if f'{cand.short_name} ({cand.party})' in poll.keys():
+                                        self.polling_dictionary[(state, cand.name)] = float(poll[f'{cand.short_name} ({cand.party})']) / 100
         return self.polling_dictionary
 
     def get_polling_dictionary(self):
+
+        candidates_names = [('Joseph R. Biden Jr.', 'D', 'Biden'), ('Donald Trump', 'R', 'Trump'),
+                            ('Jo Jorgensen', 'L', 'Jorgensen'), ('Howie Hawkins', 'G', 'Hawkins')]
+        candidates = [Candidate(*can) for can in candidates_names]
+        self.fill_rcp_polling_dictionary(candidates)
         self.fill_538_polling_dictionary()
         return self.polling_dictionary
 
@@ -185,13 +196,14 @@ class PollingData:
             return national_polling_average
 
     def get_standard_deviation_of_polls(self, day=date.today()):
-        """Linear Interpolatation of emperical standard deviations of how polling data predicts the result
+        """Linear Interpolation of empirical standard deviations of how polling data predicts the result
         on a given date.
 
         Calculated in the original paper using partial pooled historical data. Instead of recreating that, we
         interpolate their data.
 
-        Based on methodology described in "Bayesian Combination of State Polls and Election Forecasts" (Lock & Gelman 2010)
+        Based on methodology described in "Bayesian Combination of State Polls and Election Forecasts" (Lock &
+        Gelman 2010)
         TODO: Although Section 2 of Lock&Gelman suggests this is how they perform their simulations, the actual results in Section 4 suggest this depends on the state
 
         Lock, Kari, and Andrew Gelman. "Bayesian combination of state polls and election forecasts." Political Analysis
@@ -209,10 +221,12 @@ class PollingData:
                               (election - date(2020, 8, 1)).days,
                               (election - date(2020, 5, 1)).days,
                               (election - date(2020, 2, 1)).days])
-            sd_to_interpolate = np.array([.014, .022, .03, .038])
+            # sd_to_interpolate = np.array([.014, .022, .03, .038])*100
+            # We multiply by 100 as a temporary hack, since the bayesian updating is over confident in the polls
+            # Basically, we will now multiply the polls' margin of error by this correction factor.
+            sd_to_interpolate = np.array([.03, .04, .05, .06]) * 100 * self.margin_of_error
             self.bayesian_sd_polls = float(np.interp(days_to_election, dates, sd_to_interpolate))
             return self.bayesian_sd_polls
-
 
     def estimate_polls_bayesian(self, state_name: str, candidate: Candidate) -> float:
         """
