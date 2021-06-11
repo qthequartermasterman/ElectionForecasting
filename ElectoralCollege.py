@@ -4,6 +4,13 @@ from StateFunction import State
 from electoral_votes import electoral_votes, total_electoral_votes
 from datetime import date
 
+from multiprocessing import Pool
+from os import cpu_count
+
+
+NUM_CPU = cpu_count()
+
+
 def dict_sum(a, b):
     """Adds together the values of matching keys of two dictionaries.
     :param a: first dict to add
@@ -115,15 +122,21 @@ class ElectoralCollege:
         candidate_win_counts[None] = 0  # Draws are totally feasible
         write_in_candidate = Candidate('Write-in', 'I')  # Voters can write-in, and sometimes they could win.
         candidate_win_counts[write_in_candidate] = 0
-        for i in range(num_simulations):
-            results = self.run_one_simulation(candidates)
-            candidate_sums = self.analyze_simulation(results)
-            candidate_win_counts[self.get_winner(candidate_sums)] += 1
-            if verbose:
-                winner = self.get_winner(candidate_sums)
-                print(f'Simulation {i}: ', candidate_sums, 'Winner:', winner)
-                self.save_simulation_to_csv(candidates, candidate_sums, winner, results, i)
-                if write_in_candidate in candidate_sums.keys():
-                    print(f'Independent won a state with {candidate_sums[write_in_candidate]} votes')
+
+        with Pool(NUM_CPU) as pool:
+            results = pool.starmap(self.each_iteration, [(i, candidates, verbose, write_in_candidate) for i in range(num_simulations)])
+            for candidate_sums in results:
+                candidate_win_counts[self.get_winner(candidate_sums)] += 1
 
         return candidate_win_counts
+
+    def each_iteration(self, i, candidates, verbose, write_in_candidate):
+        results = self.run_one_simulation(candidates)
+        candidate_sums = self.analyze_simulation(results)
+        if verbose:
+            winner = self.get_winner(candidate_sums)
+            print(f'Simulation {i}: ', candidate_sums, 'Winner:', winner)
+            self.save_simulation_to_csv(candidates, candidate_sums, winner, results, i)
+            if write_in_candidate in candidate_sums.keys():
+                print(f'Independent won a state with {candidate_sums[write_in_candidate]} votes')
+        return candidate_sums

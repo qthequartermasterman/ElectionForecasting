@@ -1,17 +1,19 @@
 import csv
+import math
 import os
 import random
 import time
-from datetime import date
 import urllib.request
-import math
-import rcp
+from datetime import date
 
-#import rcp
+import numpy as np
+import rcp
 
 from Candidate import Candidate
 from electoral_votes import electoral_votes, list_of_battleground_state_names
-import numpy as np
+
+
+# import rcp
 
 
 class PollingData:
@@ -110,7 +112,7 @@ class PollingData:
         candidates_names = [('Joseph R. Biden Jr.', 'D', 'Biden'), ('Donald Trump', 'R', 'Trump'),
                             ('Jo Jorgensen', 'L', 'Jorgensen'), ('Howie Hawkins', 'G', 'Hawkins')]
         candidates = [Candidate(*can) for can in candidates_names]
-        self.fill_rcp_polling_dictionary(candidates)
+        #self.fill_rcp_polling_dictionary(candidates)
         self.fill_538_polling_dictionary()
         return self.polling_dictionary
 
