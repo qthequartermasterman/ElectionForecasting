@@ -7,6 +7,8 @@ from datetime import date
 from multiprocessing import Pool
 from os import cpu_count
 
+from typing import List, Dict
+
 
 NUM_CPU = cpu_count()
 
@@ -31,12 +33,18 @@ def dict_sum(a, b):
 
 class ElectoralCollege:
     """Contains all functionality necessary to simulate the electoral college."""
-    def __init__(self, polling_data=None):
+    def __init__(self, polling_data=None, parallel=True):
+        """
+
+        :param polling_data: a polling data instance.
+        :param parallel: bool representing whether or not to run the simulations in parallel.
+        """
         self.electoral_votes = electoral_votes
         self.polling_data = polling_data or PollingData()
         self.states = {name: State(name, self.polling_data) for name in self.electoral_votes.keys()}
+        self.parallel = parallel
 
-    def run_one_simulation(self, candidates: [Candidate]) -> {str: Candidate}:
+    def run_one_simulation(self, candidates: List[Candidate]) -> Dict[str, Candidate]:
         """Runs a single electoral college simulation. For each state, it generates a single winner
 
         :param candidates: a list of candidates
@@ -123,9 +131,14 @@ class ElectoralCollege:
         write_in_candidate = Candidate('Write-in', 'I')  # Voters can write-in, and sometimes they could win.
         candidate_win_counts[write_in_candidate] = 0
 
-        with Pool(NUM_CPU) as pool:
-            results = pool.starmap(self.each_iteration, [(i, candidates, verbose, write_in_candidate) for i in range(num_simulations)])
-            for candidate_sums in results:
+        if self.parallel:
+            with Pool(NUM_CPU) as pool:
+                results = pool.starmap(self.each_iteration, [(i, candidates, verbose, write_in_candidate) for i in range(num_simulations)])
+                for candidate_sums in results:
+                    candidate_win_counts[self.get_winner(candidate_sums)] += 1
+        else:
+            for i in range(num_simulations):
+                candidate_sums = self.each_iteration(i, candidates, verbose, write_in_candidate)
                 candidate_win_counts[self.get_winner(candidate_sums)] += 1
 
         return candidate_win_counts
