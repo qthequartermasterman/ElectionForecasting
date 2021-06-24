@@ -1,0 +1,4 @@
+# Election Forecasting
+Basic Election Forecasting tool using Monte Carlo simulations. This repository pulls polling data from FiveThirtyEight's data repository and RealClearPolitics polls. Using those poll results and national/historical trends, simulates the presidential election in each state with Monte Carlo methods. After performing the election in each state, it calculates the electoral college totals to simulate final national results. It then repeats this several thousand times to estimate the relative number of scenarios where each candidate wins to estimate that candidate's probability of winning the presidential election.
+
+This is currently calibrated for the November 2020 Presidential Election, but future revisions will expand functionality to include U.S. House of Representative and U.S. Senate races, as well.
