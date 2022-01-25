@@ -14,6 +14,17 @@ class Candidate:
     def __post_init__(self):
         # short circuit evaluation. If short_name is a falsy, then it uses the full name
         super().__setattr__('short_name', self.short_name or self.name)
+        if self.party == 'D':
+            super().__setattr__('party', DemocratParty)
+        elif self.party == 'R':
+            super().__setattr__('party', RepublicanParty)
+        elif self.party == 'L':
+            super().__setattr__('party', LibertarianParty)
+        elif self.party == 'G':
+            super().__setattr__('party', GreenParty)
+
+
+
 
     def __repr__(self):
         return f'{self.short_name} ({self.party.abbreviation})'

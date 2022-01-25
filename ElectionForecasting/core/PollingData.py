@@ -4,16 +4,19 @@ import os
 import random
 import time
 import urllib.request
+from collections import defaultdict
 from datetime import date
+from typing import Dict
 
 import numpy as np
 import rcp
 
-from Candidate import Candidate
+from .Candidate import Candidate
+from .Party import DemocratParty, RepublicanParty, GreenParty, LibertarianParty
 from electoral_votes import electoral_votes, list_of_battleground_state_names
 
-
 # import rcp
+from .State import States, state_by_name
 
 
 class PollingData:
@@ -21,14 +24,14 @@ class PollingData:
 
     def __init__(self):
         self.fivethirtyeight_polling_data_url = 'https://projects.fivethirtyeight.com/2020-general-data/presidential_poll_averages_2020.csv'
-        self.local_uri_538 = 'data/fivethirtyeight.csv'
-        self.local_uri_2016_results = 'data/2016results.csv'
-        self.local_uri_similarity = 'data/StateSimilarityClosest.csv'
+        self.local_uri_538 = '../../data/fivethirtyeight.csv'
+        self.local_uri_2016_results = '../../data/2016results.csv'
+        self.local_uri_similarity = '../../data/StateSimilarityClosest.csv'
 
         # electoral_votes is a dict with state names as keys, we also want the National Poll data, for good measure
         self.list_of_state_names = list(electoral_votes.keys()) + ['National']
         self.list_of_battleground_state_names = list_of_battleground_state_names
-        self.polling_dictionary = {}
+        self.polling_dictionary = defaultdict(lambda: 0)
         self.results2016 = {}
         self.similar_states = {}
 
@@ -71,12 +74,12 @@ class PollingData:
             with open(self.local_uri_similarity, 'r') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    if row['State'] not in self.similar_states.keys():
+                    if row['State'].strip() not in self.similar_states.keys():
                         #
-                        state_name = row['State']
-                        closest1 = row['Closest1']
-                        closest2 = row['Closest2']
-                        closest3 = row['Closest3']
+                        state_name = row['State'].strip()
+                        closest1 = row['Closest1'].strip()
+                        closest2 = row['Closest2'].strip()
+                        closest3 = row['Closest3'].strip()
                         self.similar_states[state_name] = (closest1, closest2, closest3)
         return self.similar_states
 
@@ -90,7 +93,8 @@ class PollingData:
 
     def fill_rcp_polling_dictionary(self, candidates):
         # Try RealClearPolitics for polling data
-        for state in set(self.list_of_battleground_state_names).difference([key[0] for key in self.polling_dictionary.keys()]):
+        for state in set(self.list_of_battleground_state_names).difference(
+                [key[0] for key in self.polling_dictionary.keys()]):
             for state in set(self.list_of_battleground_state_names):
                 print(f'Current states: {[key[0] for key in self.polling_dictionary.keys()]}')
                 print(f'Retrieving {state}')
@@ -104,7 +108,8 @@ class PollingData:
                             if poll['Poll'] == 'RCP Average':
                                 for cand in candidates:
                                     if f'{cand.short_name} ({cand.party})' in poll.keys():
-                                        self.polling_dictionary[(state, cand.name)] = float(poll[f'{cand.short_name} ({cand.party})']) / 100
+                                        self.polling_dictionary[(state, cand.name)] = float(
+                                            poll[f'{cand.short_name} ({cand.party})']) / 100
         return self.polling_dictionary
 
     def get_polling_dictionary(self):
@@ -112,34 +117,33 @@ class PollingData:
         candidates_names = [('Joseph R. Biden Jr.', 'D', 'Biden'), ('Donald Trump', 'R', 'Trump'),
                             ('Jo Jorgensen', 'L', 'Jorgensen'), ('Howie Hawkins', 'G', 'Hawkins')]
         candidates = [Candidate(*can) for can in candidates_names]
-        #self.fill_rcp_polling_dictionary(candidates)
+        # self.fill_rcp_polling_dictionary(candidates)
         self.fill_538_polling_dictionary()
         return self.polling_dictionary
 
-    def get_polling_data(self, state_name: str, candidate: Candidate):
+    def get_polling_data(self, state: States, district_num: int, candidate: Candidate):
         polling_dictionary = self.get_polling_dictionary()
+        state_name: str = state.value.name
         if (state_name, candidate.name) in polling_dictionary.keys():
             return polling_dictionary[(state_name, candidate.name)]
         else:
             return None
 
-    def get_polling_distribtion(self, state_name: str, candidates: [Candidate], noise=True) -> [float]:
-        """:returns: [float] with the polling average as a decimal between 0 and 1 of each candidate in the
-        same order as candidates"""
-        polling_dictionary = self.get_polling_dictionary()
-        distribution = []
+    def get_polling_distribtion(self, state: States, district_num: int, candidates: [Candidate],
+                                noise=True) -> Dict[Candidate, float]:
+        """:returns: Dict[Candidate, float] with the polling average as a decimal between 0 and 1 of each candidate."""
+        distribution = defaultdict(lambda: 0)
         for candidate in candidates:
-
-            polls_data = self.get_polling_data(state_name, candidate)
+            polls_data = self.get_polling_data(state, district_num, candidate)
             if polls_data:
-                poll = .80 * polls_data + .20 * self.estimate_polls(state_name, candidate)
+                poll = .80 * polls_data + .20 * self.estimate_polls(state, district_num, candidate)
             else:
-                poll = self.estimate_polls(state_name, candidate)
+                poll = self.estimate_polls(state, district_num, candidate)
             if noise:
                 poll += self.margin_of_error * random.gauss(0, 1) / 2
 
-            #poll = self.estimate_polls_bayesian(state_name, candidate)
-            distribution.append(poll)
+            # poll = self.estimate_polls_bayesian(state_name, candidate)
+            distribution[candidate] = poll
 
             '''
             # Try RealClearPolitics for polling data
@@ -156,20 +160,26 @@ class PollingData:
             '''
         return distribution
 
-    def get_average_of_similar_states(self, state_name: str, candidate: Candidate):
+    def get_average_of_similar_states(self, state: States, district_num: int, candidate: Candidate):
+        state_name: str = state.value.name
         similar_states = self.fill_state_similarity()
         similar_states_tuple = similar_states[state_name]
-        similar_state_polls = [float(self.get_polling_data(state, candidate)) for state in similar_states_tuple if
-                               self.get_polling_data(state, candidate)]
+        # similar_state_polls = [float(self.get_polling_data(state, district_num, candidate)) for state in
+        #                        similar_states_tuple if self.get_polling_data(state, district_num, candidate)]
+        similar_state_polls = []
+        for similar_state in similar_states_tuple:
+            if similar_state != 'National':
+                similar_state = state_by_name[similar_state]
+                if self.get_polling_data(similar_state, district_num, candidate):
+                    similar_state_polls.append(self.get_polling_data(similar_state, district_num, candidate))
         if len(similar_state_polls):
-            average_of_similar_states = sum(similar_state_polls) / len(similar_state_polls)
             # Take a weighted average where half of the estimate comes from the previous election and
             # half of the estimate comes from current polls in similar states
-            return average_of_similar_states
+            return sum(similar_state_polls) / len(similar_state_polls)
         else:
             return None
 
-    def estimate_polls(self, state_name: str, candidate: Candidate) -> float:
+    def estimate_polls(self, state: States, district_num: int, candidate: Candidate) -> float:
         """In instances where polling data does not currently exist for a state, we can estimate it using historical
         trends, correlated states, and/or the national average.
 
@@ -181,21 +191,20 @@ class PollingData:
 
         :returns: a float between 0 and 1 representing the estimated polling percentage"""
 
+        state_name = state.value.name
         polling_dictionary = self.get_polling_dictionary()
         results2016 = self.fill_2016_results()
 
-        if candidate.party in ['D', 'R', 'L', 'G']:
-            previous_result = float(results2016[state_name][candidate.party])
-            average_of_similar_states = self.get_average_of_similar_states(state_name, candidate)
-            if average_of_similar_states:
-                # Take a weighted average where half of the estimate comes from the previous election and
-                # half of the estimate comes from current polls in similar states
-                return .5 * previous_result + .5 * average_of_similar_states
-            else:
-                return previous_result
+        if candidate.party not in [DemocratParty, RepublicanParty, LibertarianParty, GreenParty]:
+            return polling_dictionary[('National', candidate.name)]
+        previous_result = float(results2016[state_name][candidate.party.abbreviation])
+        average_of_similar_states = self.get_average_of_similar_states(state, district_num, candidate)
+        if average_of_similar_states:
+            # Take a weighted average where half of the estimate comes from the previous election and
+            # half of the estimate comes from current polls in similar states
+            return .5 * previous_result + .5 * average_of_similar_states
         else:
-            national_polling_average = polling_dictionary[('National', candidate.name)]
-            return national_polling_average
+            return previous_result
 
     def get_standard_deviation_of_polls(self, day=date.today()):
         """Linear Interpolation of empirical standard deviations of how polling data predicts the result
@@ -243,7 +252,7 @@ class PollingData:
         :returns: a float between 0 and 1 representing the estimated polling percentage"""
         results2016 = self.fill_2016_results()
 
-        if candidate.party in ['D', 'R']:
+        if candidate.party in [DemocratParty, RepublicanParty]:
             current_state_poll = self.get_polling_data(state_name, candidate)
             current_national_poll = self.get_polling_data('National', candidate)
             if current_state_poll is None:
@@ -256,14 +265,14 @@ class PollingData:
             d2016 = previous_state - previous_national
 
             var_poll_given_result = self.get_standard_deviation_of_polls() ** 2  # Square of the interpolated SD
-            #var_poll_given_result = .06 ** 2
+            # var_poll_given_result = .06 ** 2
             var_result = .033 ** 2  # Currently just the empirical SD that Lock&Gelman found by simulation.
             # TODO: Calculate a var_result independently
 
-            mean_numerator = (current_state_poll/var_poll_given_result + (d2016 + current_national_poll)/var_result)
-            mean_denominator = (1/var_poll_given_result + 1/var_result)
-            mean = mean_numerator/mean_denominator
-            variance = 1/(1/var_poll_given_result + 1/var_result)
+            mean_numerator = (current_state_poll / var_poll_given_result + (d2016 + current_national_poll) / var_result)
+            mean_denominator = (1 / var_poll_given_result + 1 / var_result)
+            mean = mean_numerator / mean_denominator
+            variance = 1 / (1 / var_poll_given_result + 1 / var_result)
             sd = math.sqrt(variance)
             return random.gauss(mean, sd)
         else:

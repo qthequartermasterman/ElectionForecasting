@@ -46,7 +46,7 @@ class TestNationalElection(IsolatedAsyncioTestCase):
         c2 = Candidate('Bob', RepublicanParty)
         results = {race: {c1: 10, c2: 300} for race in election.districts}
         analysis = await election.determine_electoral_college(results)
-        president, vice_president = await election.determine_present_vice_president(analysis)
+        president, vice_president = await election.determine_president_vice_president(analysis)
         self.assertEqual(c2, president)
         self.assertEqual(c2, vice_president)
 

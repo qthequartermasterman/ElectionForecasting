@@ -29,6 +29,9 @@ class State:
     def electoral_votes(self):
         return self.num_representatives + self.num_senators + self.num_extra_electoral_votes
 
+    def __repr__(self):
+        return f'{self.name} ({self.abbreviation})'
+
 
 class States(Enum):
     Alabama: State = State('AL', 'Alabama', 7, senators=frozenset([Candidate('Tommy Tuberville', RepublicanParty), ]))
@@ -72,7 +75,7 @@ class States(Enum):
                             senators=frozenset(
                                 [Candidate('Deb Fischer', RepublicanParty), Candidate('Ben Sasse', RepublicanParty), ]))
     Nevada: State = State('NV', 'Nevada', 4, senators=frozenset([Candidate('Jacky Rosen', DemocratParty), ]))
-    NewHampshire: State = State('NH', 'NewHampshire', 2,
+    NewHampshire: State = State('NH', 'New Hampshire', 2,
                                 senators=frozenset([Candidate('Jeanne Shaheen', DemocratParty), ]))
     NewJersey: State = State('NJ', 'New Jersey', 12, senators=frozenset(
         [Candidate('Bob Menendez', DemocratParty), Candidate('Cory Booker', DemocratParty), ]))
@@ -112,6 +115,9 @@ class States(Enum):
     DistrictOfColumbia: State = State('DC', 'District of Columbia', 0, 0, 3)
 
 
+state_by_abbreviation = {state.value.abbreviation: state for state in States}
+state_by_name = {state.value.name: state for state in States}
+
 total_electoral_votes = sum([state.value.electoral_votes for state in States])
 
 list_of_battleground_state_names = [States.Florida,
@@ -131,54 +137,3 @@ list_of_battleground_state_names = [States.Florida,
                                     States.Maine,
                                     States.Colorado,
                                     States.NewMexico]
-
-"""senators = frozenset([Candidate('Tommy Tuberville', RepublicanParty), ])
-senators = frozenset([Candidate('Dan Sullivan', RepublicanParty), ])
-senators = frozenset([Candidate('Kyrsten Sinema', DemocratParty), ])
-senators = frozenset([Candidate('Tom Cotton', RepublicanParty), ])
-senators = frozenset([Candidate('Dianne Feinstein', DemocratParty), ])
-senators = frozenset([Candidate('John Hickenlooper', DemocratParty), ])
-senators = frozenset([Candidate('Chris Murphy', DemocratParty), ])
-senators = frozenset([Candidate('Tom Carper', DemocratParty), Candidate('Chris Coons', DemocratParty), ])
-senators = frozenset([Candidate('Rick Scott', RepublicanParty), ])
-senators = frozenset([Candidate('Jon Ossoff', DemocratParty), ])
-senators = frozenset([Candidate('Mazie Hirono', DemocratParty), ])
-senators = frozenset([Candidate('Jim Risch', RepublicanParty), ])
-senators = frozenset([Candidate('Dick Durbin', DemocratParty), ])
-senators = frozenset([Candidate('Mike Braun', RepublicanParty), ])
-senators = frozenset([Candidate('Joni Ernst', RepublicanParty), ])
-senators = frozenset([Candidate('Roger Marshall', RepublicanParty), ])
-senators = frozenset([Candidate('Mitch McConnell', RepublicanParty), ])
-senators = frozenset([Candidate('Bill Cassidy', RepublicanParty), ])
-senators = frozenset([Candidate('Angus King', DemocratParty), Candidate('Susan Collins', RepublicanParty), ])
-senators = frozenset([Candidate('Ben Cardin', DemocratParty), ])
-senators = frozenset([Candidate('Elizabeth Warren', DemocratParty), Candidate('Ed Markey', DemocratParty), ])
-senators = frozenset([Candidate('Debbie Stabenow', DemocratParty), Candidate('Gary Peters', DemocratParty), ])
-senators = frozenset([Candidate('Amy Klobuchar', DemocratParty), Candidate('Tina Smith', DemocratParty), ])
-senators = frozenset([Candidate('Roger Wicker', RepublicanParty), Candidate('Cindy Hyde-Smith', RepublicanParty), ])
-senators = frozenset([Candidate('Josh Hawley', RepublicanParty), ])
-senators = frozenset([Candidate('Jon Tester', DemocratParty), Candidate('Steve Daines', RepublicanParty), ])
-senators = frozenset([Candidate('Deb Fischer', RepublicanParty), Candidate('Ben Sasse', RepublicanParty), ])
-senators = frozenset([Candidate('Jacky Rosen', DemocratParty), ])
-senators = frozenset([Candidate('Jeanne Shaheen', DemocratParty), ])
-senators = frozenset([Candidate('Bob Menendez', DemocratParty), Candidate('Cory Booker', DemocratParty), ])
-senators = frozenset([Candidate('Martin Heinrich', DemocratParty), Candidate('Ben Ray Luján', DemocratParty), ])
-senators = frozenset([Candidate('Kirsten Gillibrand', DemocratParty), ])
-senators = frozenset([Candidate('Thom Tillis', RepublicanParty), ])
-senators = frozenset([Candidate('Kevin Cramer', RepublicanParty), ])
-senators = frozenset([Candidate('Sherrod Brown', DemocratParty), ])
-senators = frozenset([Candidate('Jim Inhofe', RepublicanParty), ])
-senators = frozenset([Candidate('Jeff Merkley', DemocratParty), ])
-senators = frozenset([Candidate('Bob Casey Jr.', DemocratParty), ])
-senators = frozenset([Candidate('Sheldon Whitehouse', DemocratParty), Candidate('Jack Reed', DemocratParty), ])
-senators = frozenset([Candidate('Lindsey Graham', RepublicanParty), ])
-senators = frozenset([Candidate('Mike Rounds', RepublicanParty), ])
-senators = frozenset([Candidate('Marsha Blackburn', RepublicanParty), Candidate('Bill Hagerty', RepublicanParty), ])
-senators = frozenset([Candidate('Ted Cruz', RepublicanParty), Candidate('John Cornyn', RepublicanParty), ])
-senators = frozenset([Candidate('Mitt Romney', RepublicanParty), ])
-senators = frozenset([Candidate('Bernie Sanders', DemocratParty), ])
-senators = frozenset([Candidate('Tim Kaine', DemocratParty), Candidate('Mark Warner', DemocratParty), ])
-senators = frozenset([Candidate('Maria Cantwell', DemocratParty), ])
-senators = frozenset([Candidate('Joe Manchin', DemocratParty), Candidate('Shelley Moore Capito', RepublicanParty), ])
-senators = frozenset([Candidate('Tammy Baldwin', DemocratParty), ])
-senators = frozenset([Candidate('John Barrasso', RepublicanParty), Candidate('Cynthia Lummis', RepublicanParty), ])"""

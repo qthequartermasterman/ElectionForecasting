@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from .Candidate import Candidate
 from .Party import WriteIn, RepublicanParty, DemocratParty
 from .PollingData import PollingData
+from .State import States
 
 
 class ElectionType(Enum):
@@ -18,7 +19,7 @@ ElectionResult = Dict[Candidate, int]  # Dict of candidates whose values are the
 
 
 class ElectionRace:
-    def __init__(self, name: str, polling_data: PollingData = None, population: int = None):
+    def __init__(self, state: States, district_num: int, polling_data: PollingData = None, population: int = None):
         """
         :param name: str representing the name of the particular election race
         :param polling_data: PollingData
@@ -28,7 +29,9 @@ class ElectionRace:
         voting population and/or the same precision as the polling data, then estimations/simulations will be more
         precise. (optional)
         """
-        self.name: str = name
+        self.name: str = f'{state.value.abbreviation}-{district_num}'
+        self.state = state
+        self.district_num = district_num
         self.polling_data: PollingData = polling_data or PollingData()
         self.population: int = population or 250
 
@@ -100,7 +103,7 @@ class ElectionRace:
         :return: dict whose keys are candidates and values are their corresponding polling
         percentages
         """
-        return self.polling_data.get_polling_distribtion(self.name, candidates)
+        return self.polling_data.get_polling_distribtion(self.state, self.district_num, candidates)
 
     def __repr__(self):
         return self.name

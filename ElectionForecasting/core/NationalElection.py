@@ -7,12 +7,25 @@ from .Candidate import Candidate, TokenEnsemble
 from .ElectionRace import ElectionRace, ElectionResult
 from .Party import DemocratParty, RepublicanParty, Party
 from .PollingData import PollingData
-from .State import States, State, ElectoralCollegeVotingMethod, total_electoral_votes
+from .State import States, State, ElectoralCollegeVotingMethod, total_electoral_votes, state_by_abbreviation
+from .HouseDistrictPopulations import house_district_populations
 
 HouseDistrict = Tuple[States, int, ElectionRace]
 
 
-def dict_sum(a, b):
+async def gather_dict(tasks: dict):
+    async def mark(key, coro):
+        return key, await coro
+
+    return {
+        key: result
+        for key, result in await asyncio.gather(
+            *(mark(key, coro) for key, coro in tasks.items())
+        )
+    }
+
+
+def dict_sum(a: Dict, b: Dict):
     """Adds together the values of matching keys of two dictionaries.
     :param a: first dict to add
     :param b: second dict to add
@@ -60,12 +73,15 @@ class NationalElection:
         self.president: Candidate = None
         self.vice_president: Candidate = None
 
+        self._init_congressional_districts()
+
     def _init_congressional_districts(self) -> List[HouseDistrict]:
         """
         Instantiate all of the ElectionRace objects we will need.
         :return: List of tuples representing the state, district number, and an ElectionRace number for that race.
         """
         districts = []
+        '''
         for state in States:
             for i in range(1, state.value.num_representatives + 1):
                 # TODO: instantiate with correct population
@@ -73,6 +89,11 @@ class NationalElection:
                                                          polling_data=self.polling_data)))
         # D.C. doesn't have any congressional districts, but we still need it for presidential elections.
         districts.append((States.DistrictOfColumbia, 0, ElectionRace('DC-0', polling_data=self.polling_data)))
+        '''
+        for state_abbreviation, district_num, population in house_district_populations:
+            state = state_by_abbreviation[state_abbreviation]
+            districts.append((state, district_num, ElectionRace(state, district_num,
+                                                                polling_data=self.polling_data)))
         return districts
 
     async def run_one_simulation(self, candidates: List[Candidate],
@@ -82,18 +103,21 @@ class NationalElection:
         :param verbose:
         :param candidates: a list of candidates
         :returns a dictionary with house districts as keys and the election results as values"""
-        return {race: race[2].get_winner(candidates) for race in self.districts}
+        #return {race: race[2].get_winner(candidates) for race in self.districts}
+        return await gather_dict({race: race[2].get_winner(candidates) for race in self.districts})
 
     async def run_election(self, candidates: List[Candidate] = TokenEnsemble, verbose=True):
         # TODO: Implement non-down-ballot voting
         # Run the House election
         district_results: Dict[HouseDistrict, ElectionResult] = await self.run_one_simulation(candidates, verbose)
-        house = self.determine_house(district_results, verbose)
+        if verbose:
+            print({district[2]: dict(results) for district, results in district_results.items()})
+        house = await self.determine_house(district_results, verbose)
         # Run the Senate election
-        senate = self.determine_senate(district_results, verbose)
+        senate = await self.determine_senate(district_results, verbose)
         # Run the Presidential Election
         electoral_college = await self.determine_electoral_college(district_results, verbose)
-        president, vice_president = self.determine_present_vice_president(electoral_college, verbose)
+        president, vice_president = await self.determine_president_vice_president(electoral_college, verbose)
 
     async def determine_house(self, district_results: Dict[HouseDistrict, ElectionResult],
                               verbose=True) -> Dict[States, Dict[int, Candidate]]:
@@ -136,7 +160,7 @@ class NationalElection:
             senate[state].extend(state.value.senators)
         for state, candidate_count in state_candidate_count.items():
             if state != States.DistrictOfColumbia and len(state.value.senators) < 2:
-                senate[state].extend([determine_winner(candidate_count) for _ in range(2-len(senate[state]))])
+                senate[state].extend([determine_winner(candidate_count) for _ in range(2 - len(senate[state]))])
         self.senate = senate
         return senate
 
@@ -175,8 +199,8 @@ class NationalElection:
                     electoral_sums[candidate] += 1
         return electoral_sums
 
-    async def determine_present_vice_president(self, electoral_college_counts: ElectionResult,
-                                               verbose=True) -> Tuple[Candidate, Candidate]:
+    async def determine_president_vice_president(self, electoral_college_counts: ElectionResult,
+                                                 verbose=True) -> Tuple[Candidate, Candidate]:
         """
         Determine the President-Elect of the United States. Normally, this is determined by a simple majority of
         electoral college votes.
@@ -187,9 +211,13 @@ class NationalElection:
         :param electoral_college_counts:
         :return:
         """
+
+        if verbose:
+            print('Electoral college:', dict(electoral_college_counts))
         # Count the electoral college
         for candidate, electoral_votes in electoral_college_counts.items():
             if electoral_votes > total_electoral_votes / 2:
+                self.president, self.vice_president = candidate, candidate
                 return candidate, candidate
 
         # Only the top three candidates go onto contingency elections
