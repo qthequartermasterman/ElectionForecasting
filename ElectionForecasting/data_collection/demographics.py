@@ -260,4 +260,5 @@ def load_congressional_district_data(filename: str) -> pd.DataFrame:
     return district_df
 
 
-congressional_district_demographics = load_congressional_district_data('./data/2019-congressional-districts')
+demographics_filename = './data/demographics/2019-congressional-districts.csv'
+congressional_district_demographics = load_congressional_district_data(demographics_filename)
