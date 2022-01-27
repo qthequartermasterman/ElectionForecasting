@@ -92,7 +92,10 @@ def download_district_results(url, start, stop) -> pd.DataFrame:
 
             pandas_tables_by_state.append(state_table)
 
-    return pd.concat(pandas_tables_by_state)
+    district_df = pd.concat(pandas_tables_by_state)
+    # Get rid of duplicate rows, which can happen in redistricting. We only really care about the results
+    district_df = district_df[~district_df.index.duplicated(keep='first')]
+    return district_df
 
 
 def download_district_results_2020() -> pd.DataFrame:
