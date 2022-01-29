@@ -243,6 +243,11 @@ def download_congressional_district_data(year: int = 2019,
 
     cook_pvi = pd.read_csv('./data/congressional_district_cook.csv', index_col=0)
     district_df = pd.concat([district_df, cook_pvi], axis=1)
+    district_df = district_df[~district_df['Cook PVI'].isna()]  # Only keep states' districts
+    # if 'District of Columbia-98' in district_df.index:
+    #     district_df.drop('District of Columbia-98')
+    # if 'Puerto Rico-98' in district_df.index:
+    #     district_df.drop('Puerto Rico-98')
     return district_df
 
 
