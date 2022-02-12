@@ -1,0 +1,60 @@
+Election,Year,Winner,Winner Party,EC Votes,EC %,PV %,PV % Margin,PV Votes,PV Margin,Runner-up,Runner-up Party,Turnout
+1,1788,George Washington,Ind.,69/69,1.0000,1.0000,1.0000,43782,43782,No candidate[a],No candidate[a],0.116
+2,1792,George Washington,Ind.,132/132,1.0000,1.0000,1.0000,28579,28579,No candidate[a],No candidate[a],0.063
+3,1796,John Adams,Fed.,71/138,0.5145,0.5345,0.0690,35726,4611,Thomas Jefferson,D-R[b],0.201
+4,1800,Thomas Jefferson,D-R,73/138,0.5290,0.6143,0.2286,41330,15378,Aaron Burr,D-R[c],0.323
+5,1804,Thomas Jefferson,D-R,162/176,0.9205,0.7279,0.4558,104110,65191,Charles C. Pinckney,Fed.,0.238
+6,1808,James Madison,D-R,122/175,0.6972,0.6474,0.3233,124732,62301,Charles C. Pinckney,Fed.,0.368
+7,1812,James Madison,D-R,128/217,0.5899,0.5037,0.0274,140431,7650,DeWitt Clinton,D-R[d],0.404
+8,1816,James Monroe,D-R,183/217,0.8433,0.6816,0.3724,76592,41852,Rufus King,Fed.,0.235
+9,1820,James Monroe,D-R,231/232,0.9957,0.8061,0.6469,87343,69878,John Quincy Adams,D-R[e],0.101
+10,1824,John Quincy Adams,D-R,84/261,0.3218,0.3092,0.1044,113142,38221,Andrew Jackson,D-R[f],0.269
+11,1828,Andrew Jackson,Dem.,178/261,0.6820,0.5593,0.1225,642806,140839,John Quincy Adams,NR,0.573
+12,1832,Andrew Jackson,Dem.,219/286,0.7657,0.5474,0.1781,702735,228628,Henry Clay,NR,0.570
+13,1836,Martin Van Buren,Dem.,170/294,0.5782,0.5079,0.1420,763291,213384,William Henry Harrison,Whig,0.565
+14,1840,William Henry Harrison,Whig,234/294,0.7959,0.5287,0.0605,1275583,145938,Martin Van Buren,Dem.,0.803
+15,1844,James K. Polk,Dem.,170/275,0.6182,0.4954,0.0145,1339570,39413,Henry Clay,Whig,0.792
+16,1848,Zachary Taylor,Whig,163/290,0.5621,0.4728,0.0479,1360235,137882,Lewis Cass,Dem.,0.728
+17,1852,Franklin Pierce,Dem.,254/296,0.8581,0.5083,0.0695,1605943,219525,Winfield Scott,Whig,0.695
+18,1856,James Buchanan,Dem.,174/296,0.5878,0.4529,0.1220,1835140,494472,John C. Frémont,Rep.,0.794
+19,1860,Abraham Lincoln,Rep.,180/303,0.5941,0.3965,0.1013,1855993,474049,John C. Breckinridge,Dem.[g],0.818
+20,1864,Abraham Lincoln,Rep.,212/233,0.9099,0.5503,0.1008,2211317,405090,George B. McClellan,Dem.,0.763
+21,1868,Ulysses S. Grant,Rep.,214/294,0.7279,0.5266,0.0532,3013790,304810,Horatio Seymour,Dem.,0.809
+22,1872,Ulysses S. Grant,Rep.,286/352,0.8125,0.5558,0.1180,3597439,763729,Thomas A. Hendricks,Dem.[h],0.721
+23,1876,Rutherford B. Hayes,Rep.,185/369,0.5014,0.4792,0.0300,4034142,252666,Samuel J. Tilden,Dem.,0.826
+24,1880,James A. Garfield,Rep.,214/369,0.5799,0.4831,0.0009,4453337,1898,Winfield Scott Hancock,Dem.,0.805
+25,1884,Grover Cleveland,Dem.,219/401,0.5461,0.4885,0.0057,4914482,57579,James G. Blaine,Rep.,0.782
+26,1888,Benjamin Harrison,Rep.,233/401,0.5810,0.4780,0.0083,5443892,90596,Grover Cleveland,Dem.,0.805
+27,1892,Grover Cleveland,Dem.,277/444,0.6239,0.4602,0.0301,5553898,363099,Benjamin Harrison,Rep.,0.758
+28,1896,William McKinley,Rep.,271/447,0.6063,0.5102,0.0431,7112138,601331,William Jennings Bryan,Dem.,0.796
+29,1900,William McKinley,Rep.,292/447,0.6523,0.5164,0.0612,7228864,857932,William Jennings Bryan,Dem.,0.737
+30,1904,Theodore Roosevelt,Rep.,336/476,0.7059,0.5642,0.1883,7630557,2546677,Alton Brooks Parker,Dem.,0.655
+31,1908,William Howard Taft,Rep.,321/483,0.6646,0.5157,0.0853,7678335,1269356,William Jennings Bryan,Dem.,0.657
+32,1912,Woodrow Wilson,Dem.,435/531,0.8192,0.4184,0.1444,6296284,2173563,Theodore Roosevelt,Prog.,0.590
+33,1916,Woodrow Wilson,Dem.,277/531,0.5217,0.4924,0.0312,9126868,578140,Charles Evans Hughes,Rep.,0.618
+34,1920,Warren G. Harding,Rep.,404/531,0.7608,0.6032,0.2617,16144093,7004432,James M. Cox,Dem.,0.492
+35,1924,Calvin Coolidge,Rep.,382/531,0.7194,0.5404,0.2522,15723789,7337547,John W. Davis,Dem.,0.489
+36,1928,Herbert Hoover,Rep.,444/531,0.8362,0.5821,0.1741,21427123,6411659,Al Smith,Dem.,0.569
+37,1932,Franklin D. Roosevelt,Dem.,472/531,0.8889,0.5741,0.1776,22821277,7060023,Herbert Hoover,Rep.,0.569
+38,1936,Franklin D. Roosevelt,Dem.,523/531,0.9849,0.6080,0.2426,27752648,11070786,Alf Landon,Rep.,0.610
+39,1940,Franklin D. Roosevelt,Dem.,449/531,0.8456,0.5474,0.0996,27313945,4966201,Wendell Willkie,Rep.,0.624
+40,1944,Franklin D. Roosevelt,Dem.,432/531,0.8136,0.5339,0.0750,25612916,3594987,Thomas E. Dewey,Rep.,0.559
+41,1948,Harry S. Truman,Dem.,303/531,0.5706,0.4955,0.0448,24179347,2188055,Thomas E. Dewey,Rep.,0.522
+42,1952,Dwight D. Eisenhower,Rep.,442/531,0.8324,0.5518,0.1085,34075529,6700439,Adlai Stevenson II,Dem.,0.623
+43,1956,Dwight D. Eisenhower,Rep.,457/531,0.8606,0.5737,0.1540,35579180,9551152,Adlai Stevenson II,Dem.,0.602
+44,1960,John F. Kennedy,Dem.,303/537,0.5642,0.4972,0.0017,34220984,112827,Richard Nixon,Rep.,0.638
+45,1964,Lyndon B. Johnson,Dem.,486/538,0.9033,0.6105,0.2258,43127041,15951287,Barry Goldwater,Rep.,0.628
+46,1968,Richard Nixon,Rep.,301/538,0.5595,0.4342,0.0070,31783783,511944,Hubert Humphrey,Dem.,0.625
+47,1972,Richard Nixon,Rep.,520/538,0.9665,0.6067,0.2315,47168710,17995488,George McGovern,Dem.,0.562
+48,1976,Jimmy Carter,Dem.,297/538,0.5520,0.5008,0.0206,40831881,1683247,Gerald Ford,Rep.,0.548
+49,1980,Ronald Reagan,Rep.,489/538,0.9089,0.5075,0.0974,43903230,8423115,Jimmy Carter,Dem.,0.542
+50,1984,Ronald Reagan,Rep.,525/538,0.9758,0.5877,0.1821,54455472,16878120,Walter Mondale,Dem.,0.552
+51,1988,George H. W. Bush,Rep.,426/538,0.7918,0.5337,0.0772,48886597,7077121,Michael Dukakis,Dem.,0.528
+52,1992,Bill Clinton,Dem.,370/538,0.6877,0.4301,0.0556,44909806,5805256,George H. W. Bush,Rep.,0.581
+53,1996,Bill Clinton,Dem.,379/538,0.7045,0.4923,0.0851,47400125,8201370,Bob Dole,Rep.,0.517
+54,2000,George W. Bush,Rep.,271/538,0.5037,0.4787,0.0051,50460110,543816,Al Gore,Dem.,0.542
+55,2004,George W. Bush,Rep.,286/538,0.5316,0.5073,0.0246,62040610,3012171,John Kerry,Dem.,0.601
+56,2008,Barack Obama,Dem.,365/538,0.6784,0.5293,0.0727,69498516,9550193,John McCain,Rep.,0.616
+57,2012,Barack Obama,Dem.,332/538,0.6171,0.5106,0.0386,65915795,4982291,Mitt Romney,Rep.,0.586
+58,2016,Donald Trump,Rep.,304/538,0.5650,0.4609,0.0209,62984828,2868686,Hillary Clinton,Dem.,0.602
+59,2020,Joe Biden,Dem.,306/538,0.5688,0.5131,0.0445,81284666,7060347,Donald Trump,Rep.,0.662

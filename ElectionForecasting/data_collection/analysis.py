@@ -1,112 +1,58 @@
-# %%
 import numpy as np
 import pandas as pd
-
+import arviz as az
 from election_results import congressional_district_results_2020
 from demographics import congressional_district_demographics
-
-# %%
-
-
-# %%
-
-list(congressional_district_demographics.columns)
-
-# %%
-
-congressional_district_demographics = congressional_district_demographics[
-    ~congressional_district_demographics['Cook PVI'].isna()]
-
-# %%
-
-congressional_district_demographics[['Cook PVI', 'Male Population']].isna().sum()
-
-# %%
-
-congressional_district_results_2020['Republican'].isna().sum()
-
-# %%
-
-congressional_district_results_2020['Republican']
-
-# %%
-
-from sklearn.impute import SimpleImputer
-
-zero_imputer = SimpleImputer(strategy='constant')
-imputed_repub = zero_imputer.fit_transform(congressional_district_results_2020[['Republican']])
-
-# %%
-
-congressional_district_results_2020['Republican'] = pd.DataFrame(imputed_repub,
-                                                                 index=list(congressional_district_demographics.index))
-congressional_district_results_2020['Republican']
-
-# %%
-
-districts = pd.concat([congressional_district_demographics, congressional_district_results_2020], axis=1)
-
-# %%
-
-districts['Republican'].isna().sum()
-
-# %%
-
-df = districts[['Cook PVI', 'Male Population']]
-df.describe()
-# %%
-normalized = (df - df.mean()) / df.std()
-normalized.describe()
-
-# %%
-
-from sklearn.linear_model import BayesianRidge
-from sklearn.linear_model import ARDRegression
-
-# repub = BayesianRidge(tol=1e-10)
-repub = ARDRegression()
-repub.fit(normalized, districts['Republican'])
-
-# %%
-
-repub.coef_
-
-# %%
-
-repub.predict([[-2, 0]])
-
-# %%
-
-districts = districts.rename(columns={'Male Population': 'MalePopulation', 'Cook PVI': 'CookPVI'})
-districts['Republican'] = districts['Republican'] / 100
-districts['Democratic'] = districts['Democratic'] / 100
-districts['Libertarian'] = districts['Libertarian'] / 100
-# %%
-
-from bambi import Model
-import arviz as az
-
-# %%
-prior = {'MalePopulation': 'beta',
-         'CookPVI': 'gaussian'}
-model = Model("Republican ~ MalePopulation + CookPVI", districts, family='binomial')
-# %%
-model
-# %%
-results = model.fit()
-# %%
-model.plot_priors()
-# %%
-az.plot_trace(results)
-az.summary(results)
-# %%
-test_data = pd.DataFrame({'MalePopulation': np.linspace(0, 1, 1000),
-                          'CookPVI': np.linspace(-10, 10, 1000)})
-
-predictions = model.predict(results, data=test_data, kind='pps', inplace=False)
-predictions
-# %%
+from bambi import Model, Prior
 az.style.use('arviz-darkgrid')
-az.plot_forest([predictions])
-# %%
-# %%
+
+parties = ['Democratic', 'Republican', 'Libertarian', 'Green']
+
+# Final combined model
+districts_full = pd.concat([congressional_district_demographics, congressional_district_results_2020[parties]],
+                           axis=1)
+
+#%%
+
+#%%
+# Get rid of NaN
+districts_full=districts_full.fillna(0)
+districts_full.isna().sum()
+# Get rid of apostrophes in the column names
+districts_full.columns = districts_full.columns.str.replace("'"," ")
+#%%
+columns = list(districts_full.columns)
+#%%
+total = 1000
+districts_full[parties] = districts_full[parties]/100  # make the percentages raw decimals
+for party in parties:
+    districts_full[party+'_y'] = districts_full[party].apply(lambda x:int(x*total))
+districts_full['n'] = total
+#%%
+formula = "p(Republican_y,n) ~ " + ' + '.join([f'"{col}"' for col in columns])
+formula
+#%%
+model_binomial = Model(formula, districts_full, family='binomial')
+
+
+#%%
+def get_priors(column_name):
+    if ((column_name != 'Total Population' and 'Population' in column_name) or
+            'SEX' in column_name or
+            'Poverty' in column_name or
+            ('house' in column_name and 'income' not in column_name) or
+            'Education' in column_name or
+            'Income' in column_name or
+            ('UNITS' in column_name and 'Total' not in column_name) or
+            column_name in parties
+    ):
+        return Prior('Beta', alpha=2, beta=2)
+    if column_name == 'Cook PVI':
+        return Prior('Normal', mu=0, sigma=16)
+    else:
+        return None
+
+priors = {col: get_priors(col) for col in columns if get_priors(col)}
+model_binomial.set_priors(priors)
+
+
