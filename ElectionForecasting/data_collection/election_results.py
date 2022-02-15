@@ -1,5 +1,5 @@
 import re
-from typing import List, Tuple, Dict, Union, Callable
+from typing import List, Tuple, Dict, Union, Callable, Optional
 
 from wikitablescrape.parse import Parser
 import requests
@@ -20,6 +20,9 @@ def right_replace(s: str, old: str, new: str, count: int = 1):
 
 
 def rename_congressional_district(name: str) -> str:
+    if 'Special' in name:
+        name = name.rsplit('Special')[0]
+        name = name.strip()
     state, num = name.rsplit(' ', maxsplit=1)
     if 'at-large' in num:
         num = '00'
@@ -44,6 +47,8 @@ def extract_election_data(text: str) -> Dict[str, Union[str, float]]:
         text = re.sub(r'\(([0-9.]+%) round 1\)', r'\1', text)
     candidates = text.split('% ')
     for candidate in candidates:
+        if not candidate:
+            break
         if candidate[-1] == '%':
             candidate = candidate[:-1]
         temporary_separator = '--&--'  # This is a token we'll use to make it easier to split the string
@@ -68,94 +73,100 @@ def extract_election_data(text: str) -> Dict[str, Union[str, float]]:
 
 
 def extract_election_data_series(district_row: pd.Series) -> pd.Series:
-    result_tuples = extract_election_data(district_row['Candidates'])
+    try:
+        result_tuples = extract_election_data(district_row['Candidates'])
+    except TypeError:
+        result_tuples = extract_election_data('% ')
     return pd.Series(result_tuples)
 
 
-def download_district_results(url, start, stop) -> pd.DataFrame:
+def download_district_results(url, start=None, stop=None) -> pd.DataFrame:
     resp = requests.get(url)
     parser = Parser(resp.text)
-    # parser.write_to_dir('./data/election_results')
+
     pandas_tables_by_state = []
 
+    def header_row_bool(url):
+        years = ('2004', '2008', '2012')
+        return all(year not in url for year in years)
+
+    skip_rows = [0] if header_row_bool(url) else []  # 2012 has their tables formatted differently. No bonus headers.
+
+    if start is None:
+        for index, table in enumerate(parser.tables):
+            if 'Alabama\xa01' in table.tag.text and 'Alabama\xa06' in table.tag.text:
+                start = index
+                break
+        if not start:
+            raise ValueError(f'Could not find suitable start table while download district results: {url}')
+    if stop is None:
+        # As far as I can tell, there are 50 state tables--one for each state.
+        stop = start + 50
+    table_range = range(start, stop)
+
     for index, table in enumerate(parser.tables):
-        if index in range(start, stop):
+        if index in table_range:
             string_output = StringIO()
             table.write(string_output)
-            # pandas_tables_by_state.append(str(string_output.getvalue()))
 
-            state_table = pd.read_csv(StringIO(string_output.getvalue()), skiprows=[0], index_col=0)
+            state_table = pd.read_csv(StringIO(string_output.getvalue()), skiprows=skip_rows, index_col=0)
             state_table = state_table.rename(
                 index={old: rename_congressional_district(old) for old in state_table.index.values})
             parties = state_table.apply(extract_election_data_series, axis=1)
             state_table = pd.concat([state_table, parties], axis=1)
 
+            # some year data has the PVI column labeled differently
+            alternate_pvi_names = ['2017 PVI', 'Cook PVI (2008)', '2004 CPVI']
+            for alternate_PVI in alternate_pvi_names:
+                if 'alternate_PVI' in state_table.columns:
+                    state_table = state_table.rename(columns={alternate_PVI: 'PVI'})
+            if 'District' in state_table.columns:
+                state_table = state_table.rename(columns={'District': 'Location'})
+
             pandas_tables_by_state.append(state_table)
 
     district_df = pd.concat(pandas_tables_by_state)
-    # Get rid of duplicate rows, which can happen in redistricting. We only really care about the results
+
+    # Get rid of duplicate rows, which can happen in redistricting.
+    # We only really care about the results, which will be the same in each district
     district_df = district_df[~district_df.index.duplicated(keep='first')]
+
+    assert len(district_df) == 435  # Make sure we ended up with 435 districts
     return district_df
 
 
-def download_district_results_2020() -> pd.DataFrame:
-    return download_district_results(
-        url='https://en.wikipedia.org/wiki/2020_United_States_House_of_Representatives_elections',
-        start=12,
-        stop=62)
+def download_district_results_year(year: int, start: Optional[int] = None, stop: Optional[int] = None):
+    district_df = download_district_results(
+        url=f'https://en.wikipedia.org/wiki/{year}_United_States_House_of_Representatives_elections',
+        start=start,
+        stop=stop)
+    # district_df = district_df.assign(Year=year)
+    district_df['Year'] = year
+    return district_df
 
 
-def download_district_results_2018() -> pd.DataFrame:
-    return download_district_results(
-        url='https://en.wikipedia.org/wiki/2018_United_States_House_of_Representatives_elections',
-        start=13,
-        stop=63)
-
-
-def download_district_results_2016() -> pd.DataFrame:
-    return download_district_results(
-        url='https://en.wikipedia.org/wiki/2016_United_States_House_of_Representatives_elections',
-        start=12,
-        stop=62)
-
-
-def load_congressional_district_results(filename: str,
-                                        download_function: Callable[[], pd.DataFrame]) -> pd.DataFrame:
+def load_congressional_district_results_year(year, filename=None) -> pd.DataFrame:
     """
 
-    :param download_function:
+    :param year:
     :param filename:
     :return:
     """
+    filename = filename or f'./data/election_results/{year}-congressional-districts.csv'
     try:
         district_df = pd.read_csv(filename, index_col=0)
     except FileNotFoundError:
-        district_df = download_function()
+        district_df = download_district_results_year(year)
         district_df.to_csv(filename)
     return district_df
 
 
-def load_congressional_district_results_2020(filename: str) -> pd.DataFrame:
-    return load_congressional_district_results(filename, download_district_results_2020)
+congressional_district_results = {year: load_congressional_district_results_year(year) for year in range(2002, 2022, 2)}
 
-
-def load_congressional_district_results_2018(filename: str) -> pd.DataFrame:
-    return load_congressional_district_results(filename, download_district_results_2018)
-
-
-def load_congressional_district_results_2016(filename: str) -> pd.DataFrame:
-    return load_congressional_district_results(filename, download_district_results_2016)
-
-
-congressional_district_results_2020 = load_congressional_district_results_2020(
-    './data/election_results/2020-congressional-districts.csv')
-congressional_district_results_2018 = load_congressional_district_results_2018(
-    './data/election_results/2018-congressional-districts.csv')
-congressional_district_results_2016 = load_congressional_district_results_2016(
-    './data/election_results/2016-congressional-districts.csv')
-
-# Tables 12-62 hold the district data by state
-# Load tables 13-62 as a dataframe
-# Extract the final election data for each district from its final column
-# Create a new dataframe with 1 column/party
-# Compile all these new dataframes into one master dataframe
+congressional_district_results_2020 = congressional_district_results[2020]
+congressional_district_results_2018 = congressional_district_results[2018]
+congressional_district_results_2016 = congressional_district_results[2016]
+congressional_district_results_2014 = congressional_district_results[2014]
+congressional_district_results_2012 = congressional_district_results[2012]
+congressional_district_results_2010 = congressional_district_results[2010]
+congressional_district_results_2008 = congressional_district_results[2008]
