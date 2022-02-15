@@ -116,12 +116,16 @@ def download_district_results(url, start=None, stop=None) -> pd.DataFrame:
             state_table = pd.concat([state_table, parties], axis=1)
 
             # some year data has the PVI column labeled differently
-            alternate_pvi_names = ['2017 PVI', 'Cook PVI (2008)', '2004 CPVI']
-            for alternate_PVI in alternate_pvi_names:
-                if 'alternate_PVI' in state_table.columns:
-                    state_table = state_table.rename(columns={alternate_PVI: 'PVI'})
-            if 'District' in state_table.columns:
-                state_table = state_table.rename(columns={'District': 'Location'})
+            alternate_pvi_names = ['2017 PVI', 'Cook PVI (2008)', '2004 CPVI', 'CPVI']
+            state_table = state_table.rename(columns={alternate_pvi: 'PVI' for alternate_pvi in alternate_pvi_names})
+            # Some years label the district as 'District' and others 'Location'
+            # 'Location' is our canonical name
+            state_table = state_table.rename(columns={'District': 'Location'})
+            state_table = state_table.rename(columns={'Status': 'Results'})
+
+            # Rep names
+            rep_name_columns = ['Incumbent', 'Member']
+            state_table = state_table.rename(columns={rep: 'Representative' for rep in rep_name_columns})
 
             pandas_tables_by_state.append(state_table)
 
