@@ -7,6 +7,30 @@ from typing import Dict
 import pandas as pd
 
 from DataCollectionUtils import cache_download_csv_to_file
+from election_results import congressional_district_results
+
+
+def pvi_to_r_score(pvi: str) -> int:
+    if isinstance(pvi, float):
+        return pvi
+    if pvi in {'EVEN', 'Even'}:
+        return 0
+    party, score = pvi.split('+')
+    score = int(score)
+    return -score if party == 'D' else score
+
+
+def get_incumbent_result(results: pd.DataFrame):
+    if results['Party'] == 'Republican':
+        return results['Republican']
+    if results['Party'] == 'Democratic':
+        return results['Democratic']
+    if results['Party'] == 'Libertarian':
+        return results['Libertarian']
+    if results['Party'] == 'Green':
+        return results['Green']
+    else:
+        return math.nan
 
 
 @cache_download_csv_to_file('data/time_for_change/compiled_time_for_changed.csv')
@@ -128,4 +152,26 @@ def load_compiled_time_for_change_data():
     return compiled_data
 
 
-time_for_change_data = load_compiled_time_for_change_data()
+@cache_download_csv_to_file('data/time_for_change/congressional_time_for_change.csv')
+def load_congressional_time_for_change_data():
+    time_for_change_data = load_compiled_time_for_change_data()
+
+    def get_series_data_for_year(year):
+        return time_for_change_data.loc[year]
+
+    combined_congressional_data = pd.concat(list(congressional_district_results.values()))
+    district_df = combined_congressional_data[
+        ['PVI', 'Party', 'Democratic', 'Republican', 'Libertarian', 'Green', 'Year']]
+    district_df = district_df.reset_index()
+    district_df = district_df.rename(columns=({'index': 'Location'}))
+    district_df['PVI'] = district_df['PVI'].apply(pvi_to_r_score)
+    incumbent_result_columns = ['Party', 'Democratic', 'Republican', 'Libertarian', 'Green']
+    district_df['IncumbentResult'] = district_df[incumbent_result_columns].apply(get_incumbent_result, axis=1)
+    district_df = district_df[['PVI', 'Location', 'Party', 'IncumbentResult', 'Year']]
+    columns_to_keep = ['GDP', 'Net Approval', 'Incumbent', 'Midterm Year', 'PresidentIncumbentParty']
+    district_df[columns_to_keep] = district_df[['Year']].apply((lambda x: get_series_data_for_year(x['Year'])), axis=1)[
+        columns_to_keep]
+    district_df['PartiesMatch'] = district_df[
+        ['Party', 'PresidentIncumbentParty']].apply(lambda x: x['Party'] == x['PresidentIncumbentParty'], axis=1)
+    district_df['HouseIncumbentWon'] = district_df['IncumbentResult'] > 50
+    return district_df
