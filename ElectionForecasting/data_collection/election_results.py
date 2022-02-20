@@ -6,6 +6,8 @@ import requests
 from io import StringIO
 import pandas as pd
 
+from DataCollectionUtils import cache_download_csv_to_file
+
 
 def right_replace(s: str, old: str, new: str, count: int = 1):
     """
@@ -150,19 +152,8 @@ def download_district_results_year(year: int, start: Optional[int] = None, stop:
 
 
 def load_congressional_district_results_year(year, filename=None) -> pd.DataFrame:
-    """
-
-    :param year:
-    :param filename:
-    :return:
-    """
     filename = filename or f'./data/election_results/{year}-congressional-districts.csv'
-    try:
-        district_df = pd.read_csv(filename, index_col=0)
-    except FileNotFoundError:
-        district_df = download_district_results_year(year)
-        district_df.to_csv(filename)
-    return district_df
+    return cache_download_csv_to_file(filename)(download_district_results_year, year)
 
 
 congressional_district_results = {year: load_congressional_district_results_year(year) for year in range(2002, 2022, 2)}
