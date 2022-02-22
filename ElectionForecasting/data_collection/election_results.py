@@ -33,6 +33,17 @@ def rename_congressional_district(name: str) -> str:
         num = '0' + num
     return state + '-' + num
 
+def handle_first_elected(first_elected):
+    if isinstance(first_elected, int):
+        return first_elected
+    if isinstance(first_elected, str):
+        if 'None' in first_elected or 'Vacant' in first_elected or 'New seat' in first_elected or 'Open' in first_elected:
+            return -1
+        try:
+            return int(''.join(s for s in first_elected.split() if s.isdigit()))
+        except ValueError:
+            return -1
+
 
 def extract_election_data(text: str) -> Dict[str, Union[str, float]]:
     """
@@ -43,6 +54,8 @@ def extract_election_data(text: str) -> Dict[str, Union[str, float]]:
     list_of_results = {}
     if text[:2] == 'Y ':
         text = text[2:]
+    for character in '<>':
+        text = text.replace(character, '')
     if 'round' in text:
         # Instant run-off voting was used. For now ignore the second round.
         # TODO: Capture Instant Run-off results
@@ -51,7 +64,7 @@ def extract_election_data(text: str) -> Dict[str, Union[str, float]]:
     candidates = text.split('% ')
     for candidate in candidates:
         if not candidate:
-            break
+            continue
         if candidate[-1] == '%':
             candidate = candidate[:-1]
         temporary_separator = '--&--'  # This is a token we'll use to make it easier to split the string
@@ -117,6 +130,8 @@ def download_district_results(url, start=None, stop=None) -> pd.DataFrame:
             state_table = state_table.rename(
                 index={old: rename_congressional_district(old) for old in state_table.index.values})
             parties = state_table.apply(extract_election_data_series, axis=1)
+            state_table = state_table.rename(columns={'First Elected': 'First elected'})
+            state_table['First elected'] = state_table['First elected'].apply(handle_first_elected)
             state_table = pd.concat([state_table, parties], axis=1)
 
             # some year data has the PVI column labeled differently
