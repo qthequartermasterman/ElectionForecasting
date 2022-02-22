@@ -70,8 +70,9 @@ def extract_election_data(text: str) -> Dict[str, Union[str, float]]:
             # float failed, meaning that percent is missing
             name, party, percent = name.strip(), party.strip(), 100
         if party in ('Republican', 'Democratic', 'Green', 'Libertarian'):
-            list_of_results[party] = percent
-            list_of_results[party + ' candidate'] = name
+            if party not in list_of_results.keys() or percent > list_of_results[party]:
+                list_of_results[party] = percent
+                list_of_results[party + ' candidate'] = name
     return list_of_results
 
 
