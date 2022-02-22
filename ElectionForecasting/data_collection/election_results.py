@@ -1,3 +1,4 @@
+import math
 import re
 from typing import List, Tuple, Dict, Union, Callable, Optional
 
@@ -124,6 +125,10 @@ def download_district_results(url, start=None, stop=None) -> pd.DataFrame:
             # 'Location' is our canonical name
             state_table = state_table.rename(columns={'District': 'Location'})
             state_table = state_table.rename(columns={'Status': 'Results'})
+            # Filter out weird incumbent party names (usually vacancies or redistricting)
+            party_names = {'Republican', 'Democratic'}
+            state_table['Party'] = state_table['Party'].where(state_table['Party'].isin(party_names))
+            # print(state_table['Party'].value_counts())
 
             # Rep names
             rep_name_columns = ['Incumbent', 'Member']
