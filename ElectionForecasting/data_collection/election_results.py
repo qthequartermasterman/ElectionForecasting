@@ -44,7 +44,11 @@ def handle_first_elected(first_elected):
             return -1
         try:
             first_elected = first_elected.replace('/', ' ')
-            return int([s for s in first_elected.split() if s.isdigit()][0])
+            numbers = [s for s in first_elected.split() if s.isdigit()]
+            if numbers:
+                return int(numbers[0])
+            else:
+                return -1
         except ValueError:
             return -1
 
@@ -204,7 +208,7 @@ def download_district_results_year(year: int, start: Optional[int] = None, stop:
 
 def load_congressional_district_results_year(year, filename=None) -> pd.DataFrame:
     filename = filename or f'./data/election_results/{year}-congressional-districts.csv'
-    return cache_download_csv_to_file(filename)(download_district_results_year)(year)
+    return cache_download_csv_to_file(filename, refresh_time=1)(download_district_results_year)(year)
 
 
 congressional_district_results = {year: load_congressional_district_results_year(year) for year in range(1972, 2022, 2)}
