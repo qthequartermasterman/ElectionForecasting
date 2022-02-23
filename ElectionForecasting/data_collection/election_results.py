@@ -69,6 +69,9 @@ def extract_election_data(text: str) -> Dict[str, Union[str, float]]:
         # TODO: Capture Instant Run-off results
         text = re.sub(r'\(([0-9.]+%) round 1, [0-9.]+% round 2\)', r'\1', text)
         text = re.sub(r'\(([0-9.]+%) round 1\)', r'\1', text)
+    if '%)' in text:
+        # Also a run-off, but we only want the second round.
+        text = re.sub(r'[0-9.]+% \(([0-9.]+%)\)', r'\1', text)
     candidates = text.split('% ')
     for candidate in candidates:
         if not candidate:
@@ -208,7 +211,7 @@ def download_district_results_year(year: int, start: Optional[int] = None, stop:
 
 def load_congressional_district_results_year(year, filename=None) -> pd.DataFrame:
     filename = filename or f'./data/election_results/{year}-congressional-districts.csv'
-    return cache_download_csv_to_file(filename, refresh_time=1)(download_district_results_year)(year)
+    return cache_download_csv_to_file(filename)(download_district_results_year)(year)
 
 
 congressional_district_results = {year: load_congressional_district_results_year(year) for year in range(1972, 2022, 2)}
