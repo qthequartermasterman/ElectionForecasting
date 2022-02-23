@@ -23,6 +23,8 @@ def right_replace(s: str, old: str, new: str, count: int = 1):
 
 
 def rename_congressional_district(name: str) -> str:
+    if 'Note' in name:
+        return ''
     if 'Special' in name:
         name = name.rsplit('Special')[0]
         name = name.strip()
@@ -33,6 +35,7 @@ def rename_congressional_district(name: str) -> str:
         num = '0' + num
     return state + '-' + num
 
+
 def handle_first_elected(first_elected):
     if isinstance(first_elected, int):
         return first_elected
@@ -40,7 +43,8 @@ def handle_first_elected(first_elected):
         if 'None' in first_elected or 'Vacant' in first_elected or 'New seat' in first_elected or 'Open' in first_elected:
             return -1
         try:
-            return int(''.join(s for s in first_elected.split() if s.isdigit()))
+            first_elected = first_elected.replace('/', ' ')
+            return int([s for s in first_elected.split() if s.isdigit()][0])
         except ValueError:
             return -1
 
@@ -54,7 +58,7 @@ def extract_election_data(text: str) -> Dict[str, Union[str, float]]:
     list_of_results = {}
     if text[:2] == 'Y ':
         text = text[2:]
-    for character in '<>':
+    for character in '<>{}':
         text = text.replace(character, '')
     if 'round' in text:
         # Instant run-off voting was used. For now ignore the second round.
@@ -64,6 +68,8 @@ def extract_election_data(text: str) -> Dict[str, Union[str, float]]:
     candidates = text.split('% ')
     for candidate in candidates:
         if not candidate:
+            continue
+        if 'Unopposed' in candidate:
             continue
         if candidate[-1] == '%':
             candidate = candidate[:-1]
@@ -81,7 +87,7 @@ def extract_election_data(text: str) -> Dict[str, Union[str, float]]:
             name, party, percent = name.strip(), party.strip(), float(percent)
         except ValueError:
             # float failed, meaning that percent is missing
-            name, party, percent = name.strip(), party.strip(), 100
+            name, party, percent = name.strip(), party.strip(), math.nan
         if party in ('Republican', 'Democratic', 'Green', 'Libertarian'):
             if party not in list_of_results.keys() or percent > list_of_results[party]:
                 list_of_results[party] = percent
@@ -103,11 +109,15 @@ def download_district_results(url, start=None, stop=None) -> pd.DataFrame:
 
     pandas_tables_by_state = []
 
-    def header_row_bool(url):
-        years = ('2004', '2008', '2012')
-        return all(year not in url for year in years)
-
-    skip_rows = [0] if header_row_bool(url) else []  # 2012 has their tables formatted differently. No bonus headers.
+    def header_row_bool(url, tag=''):
+        tag = str(tag)
+        years = ('2004', '2008', '2012', '1998', '1988')
+        if any(year in url for year in years):
+            return False
+        elif 'th colspan="2"' in tag or 'th colspan="3"' in tag:
+            return True
+        else:
+            return False
 
     if start is None:
         for index, table in enumerate(parser.tables):
@@ -123,12 +133,28 @@ def download_district_results(url, start=None, stop=None) -> pd.DataFrame:
 
     for index, table in enumerate(parser.tables):
         if index in table_range:
+            skip_rows = [0] if header_row_bool(
+                url, table.tag) else []  # 2012 has their tables formatted differently. No bonus headers.
+
             string_output = StringIO()
             table.write(string_output)
 
             state_table = pd.read_csv(StringIO(string_output.getvalue()), skiprows=skip_rows, index_col=0)
+
+            # Filter out the odd random tables showing party breakdown per state
+            # Increase the stop value by one, since we had to skip a table in the middle
+            if 'Seats' in state_table.columns or any('United States' in s for s in state_table.columns):
+                stop += 1
+                table_range = range(start, stop)
+                continue
+
             state_table = state_table.rename(
                 index={old: rename_congressional_district(old) for old in state_table.index.values})
+            state_table = state_table.drop(labels='', axis='index', errors='ignore')
+
+            if 'Result' in state_table.columns and 'Results' in state_table.columns:
+                state_table = state_table.rename(columns={'Results': 'Candidates'})
+            state_table = state_table.rename(columns={'Candidates(and run-off results)': 'Candidates'})
             parties = state_table.apply(extract_election_data_series, axis=1)
             state_table = state_table.rename(columns={'First Elected': 'First elected'})
             state_table['First elected'] = state_table['First elected'].apply(handle_first_elected)
@@ -169,6 +195,10 @@ def download_district_results_year(year: int, start: Optional[int] = None, stop:
         stop=stop)
     # district_df = district_df.assign(Year=year)
     district_df['Year'] = year
+    district_df['TimeInOffice'] = district_df[['Year', 'First elected']].apply(
+        lambda x: 0 if x['First elected'] == -1 else x['Year'] - x['First elected'],
+        axis=1)
+    district_df = district_df.rename(lambda x: f'{year}-{x}', axis='index')
     return district_df
 
 
@@ -177,7 +207,7 @@ def load_congressional_district_results_year(year, filename=None) -> pd.DataFram
     return cache_download_csv_to_file(filename)(download_district_results_year)(year)
 
 
-congressional_district_results = {year: load_congressional_district_results_year(year) for year in range(2002, 2022, 2)}
+congressional_district_results = {year: load_congressional_district_results_year(year) for year in range(1972, 2022, 2)}
 
 congressional_district_results_2020 = congressional_district_results[2020]
 congressional_district_results_2018 = congressional_district_results[2018]
