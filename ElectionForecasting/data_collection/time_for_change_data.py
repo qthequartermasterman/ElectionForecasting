@@ -35,6 +35,20 @@ def get_winner(election_series):
     return election_series[list(party_names)].astype(float).idxmax()
 
 
+def load_national_election() -> pd.DataFrame:
+    # Download the popular vote results
+    # Results come from here:
+    popular_vote_url = 'https://en.wikipedia.org/wiki/List_of_United_States_presidential_elections_by_popular_vote_margin'
+    # But it was easier to just modify the table by hand, so it's saved in `data/national_election_winners.csv`
+    return pd.read_csv('data/national_election_winners.csv', index_col='Year')
+
+
+def load_aggregate_house_results() -> pd.DataFrame:
+    house_url = 'https://en.wikipedia.org/wiki/List_of_United_States_House_of_Representatives_elections,_1856%E2%80%93present'
+    # Again this is just easier for me to download ahead of time and manipulate in excel.
+    return pd.read_csv('data/house_results.csv', index_col='ElectionYear')
+
+
 @cache_download_csv_to_file('data/time_for_change/compiled_time_for_change.csv')
 def load_compiled_time_for_change_data():
     """
@@ -93,17 +107,9 @@ def load_compiled_time_for_change_data():
     combined_approval['Net'] = combined_approval['Approve'] - combined_approval['Disapprove']
     # combined_approval
 
-    # Download the popular vote results
-    # Results come from here:
-    popular_vote_url = 'https://en.wikipedia.org/wiki/List_of_United_States_presidential_elections_by_popular_vote_margin'
-    # But it was easier to just modify the table by hand, so it's saved in `data/national_election_winners.csv`
-
-    national_elections = pd.read_csv('data/national_election_winners.csv', index_col='Year')
-    # national_elections
-
-    house_url = 'https://en.wikipedia.org/wiki/List_of_United_States_House_of_Representatives_elections,_1856%E2%80%93present'
-    # Again this is just easier for me to download ahead of time an manipulate in excel.
-    house_results = pd.read_csv('data/house_results.csv', index_col='ElectionYear')
+    # National Elections
+    national_elections = load_national_election()
+    aggregate_house_results = load_aggregate_house_results()
 
     def get_data_for_year(year: int) -> Dict:
         n = 100
@@ -128,7 +134,7 @@ def load_compiled_time_for_change_data():
                 months_for_inflation_calc)
         except KeyError:
             inflation_mean = math.nan
-        house_incumbent_result = 100 * house_results['Percentage Incumbent Seats after Election'][year]
+        house_incumbent_result = 100 * aggregate_house_results['Percentage Incumbent Seats after Election'][year]
         midterm_year = int((year % 4) / 2)
 
         if national_elections['Winner Party'][previous_presidential_year] == 'Rep.':
@@ -159,11 +165,11 @@ def load_compiled_time_for_change_data():
     return compiled_data
 
 
-def rename_year(name: str) -> str:
+def rename_year(name: str, num_years=2) -> str:
     """Change the year in a Location tag to two years in the future. This is used to transform the
     Election Results to the Previous Election Results for a district."""
     year, place = name.split('-', maxsplit=1)
-    year = str(int(year) + 2)
+    year = str(int(year) + num_years)
     return '-'.join([year, place])
 
 
@@ -175,6 +181,22 @@ def calculate_blowout(republican_percent: float, blow_out_factor: float = 65) ->
         return 'Blow-out D'
     else:
         return 'Not Blow-out D'
+
+
+def calculate_house_pvi(presidential1: float, presidential2: float, house1: float, house2: float) -> float:
+    """
+    Calculate the "House PVI" metric, which compares how a political entity compares to the national average.
+
+    :param presidential1: Float representing republican result in previous presidential election (national popular vote)
+    :param presidential2: Float representing republican result in presidential election (national popular vote) before
+        previous
+    :param house1: Float representing republican result in previous congressional election (district-level)
+    :param house2: Float representing republican result in congressional election (district-level) before previous
+    :return: the House PVI metric
+    """
+    diff1 = house1 - presidential1
+    diff2 = house2 - presidential2
+    return (diff1 + diff2) / 2
 
 
 @cache_download_csv_to_file('data/time_for_change/congressional_time_for_change.csv')
@@ -190,9 +212,11 @@ def load_congressional_time_for_change_data() -> pd.DataFrame:
     # Pull only the columns we need later
     district_df = combined_congressional_data[
         ['PVI', 'Party', 'Democratic', 'Republican', 'Libertarian', 'Green', 'Year', 'TimeInOffice']]
+
     # Add the Previous Republican results in each district and determine if it was a blowout year
     district_df['PreviousRepublican'] = district_df['Republican'].rename(rename_year, axis='index')
     district_df['BlowOut'] = district_df['PreviousRepublican'].apply(calculate_blowout)
+    district_df['PreviousRepublican2'] = district_df['Republican'].rename(lambda x: rename_year(x, 4), axis='index')
 
     # Reset the indices and move the indices to a 'Location' Column
     district_df = district_df.reset_index()
@@ -211,9 +235,9 @@ def load_congressional_time_for_change_data() -> pd.DataFrame:
 
     # Fetch Time for Change Data
     tfc_columns_to_keep = ['GDP', 'Net Approval', 'Incumbent', 'Midterm Year', 'PresidentIncumbentParty',
-                       'Time For Change Prediction', 'Republican TFC']
-    district_df[tfc_columns_to_keep] = district_df[['Year']].apply((lambda x: get_series_data_for_year(x['Year'])), axis=1)[
-        tfc_columns_to_keep]
+                           'Time For Change Prediction', 'Republican TFC']
+    district_df[tfc_columns_to_keep] = district_df[['Year']].apply(lambda x: get_series_data_for_year(x['Year']),
+                                                                   axis=1)[tfc_columns_to_keep]
     district_df['PartiesMatch'] = district_df[
         ['Party', 'PresidentIncumbentParty']].apply(lambda x: x['Party'] == x['PresidentIncumbentParty'], axis=1)
     district_df['HouseIncumbentWon'] = district_df['IncumbentResult'] > 50
