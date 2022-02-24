@@ -49,6 +49,66 @@ def load_aggregate_house_results() -> pd.DataFrame:
     return pd.read_csv('data/house_results.csv', index_col='ElectionYear')
 
 
+@cache_download_csv_to_file('data/time_for_change/gdp_growth.csv', refresh_time=24 * 7)
+def load_gdp_growth_data() -> pd.DataFrame:
+    # Download GDP Growth Data
+    gdp_growth_url = 'https://fred.stlouisfed.org/graph/fredgraph.csv?bgcolor=%23e1e9f0&chart_type=line&drp=0&fo=open%20sans&graph_bgcolor=%23ffffff&height=450&mode=fred&recession_bars=on&txtcolor=%23444444&ts=12&tts=12&width=617&nt=0&thu=0&trc=0&show_legend=yes&show_axis_titles=yes&show_tooltip=yes&id=GDPC1&scale=left&cosd=1947-01-01&coed=2021-10-01&line_color=%234572a7&link_values=false&line_style=solid&mark_type=none&mw=2&lw=2&ost=-99999&oet=99999&mma=0&fml=a&fq=Quarterly&fam=avg&fgst=lin&fgsnd=2009-06-01&line_index=1&transformation=pc1&vintage_date=2022-02-06&revision_date=2022-02-06&nd=1947-01-01'
+    gdp_growth_csv = pd.read_csv(gdp_growth_url, index_col='DATE')
+    gdp_growth_csv.rename(columns={'GDPC1_PC1': 'GDP Growth'}, inplace=True)
+    return gdp_growth_csv
+
+
+def load_inflation_data() -> pd.Series:
+    # Download inflation data
+    inflation_url = 'https://fred.stlouisfed.org/graph/fredgraph.csv?bgcolor=%23e1e9f0&chart_type=line&drp=0&fo=open%20sans&graph_bgcolor=%23ffffff&height=450&mode=fred&recession_bars=on&txtcolor=%23444444&ts=12&tts=12&width=617&nt=0&thu=0&trc=0&show_legend=yes&show_axis_titles=yes&show_tooltip=yes&id=MEDCPIM158SFRBCLE&scale=left&cosd=1983-01-01&coed=2021-12-01&line_color=%234572a7&link_values=false&line_style=solid&mark_type=none&mw=3&lw=2&ost=-99999&oet=99999&mma=0&fml=a&fq=Monthly&fam=avg&fgst=lin&fgsnd=2020-02-01&line_index=1&transformation=lin&vintage_date=2022-02-06&revision_date=2022-02-06&nd=1983-01-01'
+    inflation_csv = pd.read_csv(inflation_url, index_col='DATE')
+    inflation_csv = inflation_csv.rename(columns={'MEDCPIM158SFRBCLE': 'Monthly Inflation YoY'})
+    inflation_csv = inflation_csv['Monthly Inflation YoY']
+    return inflation_csv
+
+
+@cache_download_csv_to_file('data/time_for_change/historical_favorability.csv')
+def load_historical_president_favorability() -> pd.DataFrame:
+    # Download Presidential Favorability
+    approval_url = 'https://news.gallup.com/wwwv7interactives/json/ALLPRESIDENTS/codename.aspx?'
+    approval_json = json.loads(requests.get(approval_url).text)
+    approval_data = approval_json['AllPresidents']['HistoricalPresident'][0]['data']['Row']
+    return pd.DataFrame(
+        list(itertools.chain(*[pres['data']['Row'] for pres in approval_json['AllPresidents']['HistoricalPresident']])))
+
+
+@cache_download_csv_to_file('data/time_for_change/obama_favorability.csv')
+def load_obama_favorability() -> pd.DataFrame:
+    # Download Obama Favorability
+    obama_url = 'https://news.gallup.com/wwwv7interactives/json/OBAMAEXPANDED/codename.aspx?'
+    obama_json = json.loads(requests.get(obama_url).text)
+    obama_data = [{'StartDate': date['startDate'], 'EndDate': date['endDate'], 'Approve': int(date['Overall']['A']),
+                   'Disapprove': int(date['Overall']['D'])} for date in
+                  obama_json['ExpandedDemographics']['data']['date']]
+    return pd.DataFrame(obama_data)
+
+
+@cache_download_csv_to_file('data/time_for_change/trump_favorability.csv')
+def load_trump_favorability() -> pd.DataFrame:
+    # Download Trump favorability
+    trump_url = 'https://news.gallup.com/wwwv7interactives/json/TRUMPEXPANDED/codename.aspx?'
+    trump_json = json.loads(requests.get(trump_url).text)
+    trump_data = [{'StartDate': date['startDate'], 'EndDate': date['endDate'], 'Approve': int(date['Overall']['A']),
+                   'Disapprove': int(date['Overall']['D'])} for date in
+                  trump_json['ExpandedDemographics']['data']['date']]
+    return pd.DataFrame(trump_data)
+
+
+@cache_download_csv_to_file('data/time_for_change/biden_favorability.csv', refresh_time=24*7)
+def load_biden_favorability() -> pd.DataFrame:
+    # Download Biden favorability
+    biden_url = 'https://news.gallup.com/wwwv7interactives/json/CURRENTPRESWEEKLY/codename.aspx?'
+    biden_json = json.loads(requests.get(biden_url).text)
+    biden_data = [{'StartDate': date['startDate'], 'EndDate': date['endDate'], 'Approve': int(date['Overall']['A']),
+                   'Disapprove': int(date['Overall']['D'])} for date in biden_json['CurrentPresident']['data']['date']]
+    return pd.DataFrame(biden_data)
+
+
 @cache_download_csv_to_file('data/time_for_change/compiled_time_for_change.csv')
 def load_compiled_time_for_change_data():
     """
@@ -56,49 +116,24 @@ def load_compiled_time_for_change_data():
     :return: DataFrame containing all of the necessary data
     """
     # Download GDP Growth Data
-    gdp_growth_url = 'https://fred.stlouisfed.org/graph/fredgraph.csv?bgcolor=%23e1e9f0&chart_type=line&drp=0&fo=open%20sans&graph_bgcolor=%23ffffff&height=450&mode=fred&recession_bars=on&txtcolor=%23444444&ts=12&tts=12&width=617&nt=0&thu=0&trc=0&show_legend=yes&show_axis_titles=yes&show_tooltip=yes&id=GDPC1&scale=left&cosd=1947-01-01&coed=2021-10-01&line_color=%234572a7&link_values=false&line_style=solid&mark_type=none&mw=2&lw=2&ost=-99999&oet=99999&mma=0&fml=a&fq=Quarterly&fam=avg&fgst=lin&fgsnd=2009-06-01&line_index=1&transformation=pc1&vintage_date=2022-02-06&revision_date=2022-02-06&nd=1947-01-01'
-    gdp_growth_csv = pd.read_csv(gdp_growth_url, index_col='DATE')
-    gdp_growth_csv.rename(columns={'GDPC1_PC1': 'GDP Growth'}, inplace=True)
-    # gdp_growth_csv
+    gdp_growth_csv = load_gdp_growth_data()
 
     # Download inflation data
-    inflation_url = 'https://fred.stlouisfed.org/graph/fredgraph.csv?bgcolor=%23e1e9f0&chart_type=line&drp=0&fo=open%20sans&graph_bgcolor=%23ffffff&height=450&mode=fred&recession_bars=on&txtcolor=%23444444&ts=12&tts=12&width=617&nt=0&thu=0&trc=0&show_legend=yes&show_axis_titles=yes&show_tooltip=yes&id=MEDCPIM158SFRBCLE&scale=left&cosd=1983-01-01&coed=2021-12-01&line_color=%234572a7&link_values=false&line_style=solid&mark_type=none&mw=3&lw=2&ost=-99999&oet=99999&mma=0&fml=a&fq=Monthly&fam=avg&fgst=lin&fgsnd=2020-02-01&line_index=1&transformation=lin&vintage_date=2022-02-06&revision_date=2022-02-06&nd=1983-01-01'
-    inflation_csv = pd.read_csv(inflation_url, index_col='DATE')
-    inflation_csv = inflation_csv.rename(columns={'MEDCPIM158SFRBCLE': 'Monthly Inflation YoY'})
-    inflation_csv = inflation_csv['Monthly Inflation YoY']
-    # inflation_csv
+    inflation_csv = load_inflation_data()
 
     # Download Presidential Favorability
-    approval_url = 'https://news.gallup.com/wwwv7interactives/json/ALLPRESIDENTS/codename.aspx?'
-    approval_json = json.loads(requests.get(approval_url).text)
-    approval_data = approval_json['AllPresidents']['HistoricalPresident'][0]['data']['Row']
-    historical_df = pd.DataFrame(
-        list(itertools.chain(*[pres['data']['Row'] for pres in approval_json['AllPresidents']['HistoricalPresident']])))
-    # historical_df
+    historical_df = load_historical_president_favorability()
 
-    obama_url = 'https://news.gallup.com/wwwv7interactives/json/OBAMAEXPANDED/codename.aspx?'
-    obama_json = json.loads(requests.get(obama_url).text)
-    obama_data = [{'StartDate': date['startDate'], 'EndDate': date['endDate'], 'Approve': int(date['Overall']['A']),
-                   'Disapprove': int(date['Overall']['D'])} for date in
-                  obama_json['ExpandedDemographics']['data']['date']]
-    obama_df = pd.DataFrame(obama_data)
-    # obama_df
+    # Load Obama favorability
+    obama_df = load_obama_favorability()
 
-    trump_url = 'https://news.gallup.com/wwwv7interactives/json/TRUMPEXPANDED/codename.aspx?'
-    trump_json = json.loads(requests.get(trump_url).text)
-    trump_data = [{'StartDate': date['startDate'], 'EndDate': date['endDate'], 'Approve': int(date['Overall']['A']),
-                   'Disapprove': int(date['Overall']['D'])} for date in
-                  trump_json['ExpandedDemographics']['data']['date']]
-    trump_df = pd.DataFrame(trump_data)
-    # trump_df
+    # Download Trump favorability
+    trump_df = load_trump_favorability()
 
-    biden_url = 'https://news.gallup.com/wwwv7interactives/json/CURRENTPRESWEEKLY/codename.aspx?'
-    biden_json = json.loads(requests.get(biden_url).text)
-    biden_data = [{'StartDate': date['startDate'], 'EndDate': date['endDate'], 'Approve': int(date['Overall']['A']),
-                   'Disapprove': int(date['Overall']['D'])} for date in biden_json['CurrentPresident']['data']['date']]
-    biden_df = pd.DataFrame(biden_data)
-    # biden_df
+    # Download Biden favorability
+    biden_df = load_biden_favorability()
 
+    # Combine all favorabilities into one dataframe
     combined_approval = pd.concat([biden_df, trump_df, obama_df, historical_df], join='inner', ignore_index=True)
     # combined_approval
 
@@ -127,16 +162,21 @@ def load_compiled_time_for_change_data():
         previous_presidential_year = year - year % 4 if year % 4 else year - 4
         incumbent = 1 if national_elections['Winner'][previous_presidential_year] != national_elections['Winner'][
             previous_presidential_year - 4] else 0
+
+        # Calculate the Time for Change Prediction using the original coefficients
         time_for_change = 47.26 + .108 * net_approval + .543 * gdp + 4.313 * incumbent
+
+        # Handle inflation calculations
         months_for_inflation_calc = ('01', '02', '03', '04', '05', '06', '07', '08', '09')
         try:
             inflation_mean = sum(inflation_csv[f'{year}-{month}-01'] for month in months_for_inflation_calc) / len(
                 months_for_inflation_calc)
         except KeyError:
             inflation_mean = math.nan
+
+        # Incumbent Results
         house_incumbent_result = 100 * aggregate_house_results['Percentage Incumbent Seats after Election'][year]
         midterm_year = int((year % 4) / 2)
-
         if national_elections['Winner Party'][previous_presidential_year] == 'Rep.':
             presidential_incumbent_party = "Republican"
         elif national_elections['Winner Party'][previous_presidential_year] == 'Dem.':
