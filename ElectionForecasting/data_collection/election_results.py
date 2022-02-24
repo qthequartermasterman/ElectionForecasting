@@ -60,6 +60,8 @@ def extract_election_data(text: str) -> Dict[str, Union[str, float]]:
     :return:
     """
     list_of_results = {}
+    list_of_results_candidates = {}
+    party_names = ('Republican', 'Democratic', 'Green', 'Libertarian')
     if text[:2] == 'Y ':
         text = text[2:]
     for character in '<>{}':
@@ -94,12 +96,23 @@ def extract_election_data(text: str) -> Dict[str, Union[str, float]]:
             name, party, percent = name.strip(), party.strip(), float(percent)
         except ValueError:
             # float failed, meaning that percent is missing
-            name, party, percent = name.strip(), party.strip(), math.nan
-        if party in ('Republican', 'Democratic', 'Green', 'Libertarian'):
-            if party not in list_of_results.keys() or percent > list_of_results[party]:
-                list_of_results[party] = percent
-                list_of_results[party + ' candidate'] = name
-    return list_of_results
+            name, party, percent = name.strip(), party.strip(), 100
+
+        if party not in list_of_results.keys() or percent > list_of_results[party]:
+            list_of_results[party] = percent
+            list_of_results_candidates[party + ' candidate'] = name
+    if len(list_of_results) == 1:
+        # The candidate ran unopposed, so we will just "spoil" that election in our models by making it nan
+        for party in list_of_results:
+            list_of_results[party] = 100
+    for party in party_names:
+        if party not in list_of_results.keys():
+            list_of_results[party] = 0
+    for party in list(list_of_results.keys()):
+        if party not in party_names:
+            del list_of_results[party]
+            del list_of_results_candidates[party + ' candidate']
+    return {**list_of_results, **list_of_results_candidates}
 
 
 def extract_election_data_series(district_row: pd.Series) -> pd.Series:

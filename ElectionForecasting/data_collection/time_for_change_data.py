@@ -14,7 +14,7 @@ from datetime import date
 party_names = {'Republican', 'Democratic', 'Libertarian', 'Green'}
 
 
-def pvi_to_r_score(pvi: str) -> int:
+def pvi_to_r_score(pvi: str) -> float:
     if isinstance(pvi, float):
         return pvi
     if pvi in {'EVEN', 'Even'}:
@@ -187,7 +187,7 @@ def load_compiled_time_for_change_data():
         incumbent = 1 if national_elections['Winner'][previous_presidential_year] != national_elections['Winner'][
             previous_presidential_year - 4] else 0
         previous_president_republican = national_elections.loc[previous_presidential_year, 'Republican']
-        previous_president_republican2 = national_elections.loc[previous_presidential_year-4, 'Republican']
+        previous_president_republican2 = national_elections.loc[previous_presidential_year - 4, 'Republican']
         previous_president_democratic = national_elections.loc[previous_presidential_year, 'Democratic']
         previous_president_democratic2 = national_elections.loc[previous_presidential_year - 4, 'Democratic']
 
@@ -212,6 +212,15 @@ def load_compiled_time_for_change_data():
         else:
             presidential_incumbent_party = 'Other'
 
+        try:
+            avg_republican_house = congressional_district_results[year-2]['Republican'].mean()
+        except KeyError:
+            avg_republican_house = math.nan
+        try:
+            avg_republican_house2 = congressional_district_results[year - 4]['Republican'].mean()
+        except KeyError:
+            avg_republican_house2 = math.nan
+
         return {'GDP': gdp,
                 'Net Approval': net_approval,
                 'Result': pop_vote,
@@ -226,6 +235,8 @@ def load_compiled_time_for_change_data():
                 'PreviousPresidentPVRepublican2': previous_president_republican2,
                 'PreviousPresidentPVDemocratic': previous_president_democratic,
                 'PreviousPresidentPVDemocratic2': previous_president_democratic2,
+                'PreviousAverageRepublicanHouse': avg_republican_house,
+                'PreviousAverageRepublicanHouse2': avg_republican_house2
                 }
 
     years_range = range(1948, 2022, 2)
@@ -268,9 +279,9 @@ def calculate_house_pvi(presidential1: pd.Series, presidential2: pd.Series,
     :param house2: Float representing republican result in congressional election (district-level) before previous
     :return: the House PVI metric
     """
-    diff1 = house1 - presidential1
-    diff2 = house2 - presidential2
-    return (diff1 + diff2) / 2
+    pres_avg = (presidential1 + presidential2)/2
+    house_avg = (house1 + house2)/2
+    return house_avg - pres_avg
 
 
 @cache_download_csv_to_file('data/time_for_change/congressional_time_for_change.csv')
@@ -291,11 +302,32 @@ def load_congressional_time_for_change_data() -> pd.DataFrame:
     district_df['PreviousRepublican'] = district_df['Republican'].rename(rename_year, axis='index')
     district_df['BlowOut'] = district_df['PreviousRepublican'].apply(calculate_blowout)
     district_df['PreviousRepublican2'] = district_df['Republican'].rename(lambda x: rename_year(x, 4), axis='index')
+    # district_df['PreviousRepublican2'] = district_df['Republican'].rename(rename_year, axis='index')
+    # district_df['PreviousRepublican4'] = district_df['Republican'].rename(lambda x: rename_year(x, 4), axis='index')
+    # district_df['PreviousRepublican6'] = district_df['Republican'].rename(lambda x: rename_year(x, 6), axis='index')
+    # district_df['PreviousRepublican8'] = district_df['Republican'].rename(lambda x: rename_year(x, 8), axis='index')
 
+    # def year_since_presidential_election(year):
+    #     year = int(year)
+    #     return int(year % 4 if year % 4 else 4)
+    #
+    # district_df['Year in Cycle'] = district_df['Year'].apply(year_since_presidential_election)
+    #
+    # def choose_previous_year(df):
+    #     go_back = int(df['Year in Cycle'])
+    #     return pd.Series({'PreviousRepHouseInElectionYear': df[f'PreviousRepublican{go_back}'],
+    #                       'PreviousRepHouseInElectionYear2': df[f'PreviousRepublican{go_back + 4}']})
+    #
+    # district_df[['PreviousRepHouseInElectionYear',
+    #              'PreviousRepHouseInElectionYear2']] = district_df[['Year in Cycle',
+    #                                                                 'PreviousRepublican2',
+    #                                                                 'PreviousRepublican4',
+    #                                                                 'PreviousRepublican6',
+    #                                                                 'PreviousRepublican8']].apply(choose_previous_year,
+    #                                                                                               axis=1)
 
-    # Reset the indices and move the indices to a 'Location' Column
-    district_df = district_df.reset_index()
-    district_df = district_df.rename(columns=({'index': 'Location'}))
+    # Copy the indices to a 'Location' Column
+    district_df['Location'] = district_df.index
 
     # Get PVI as a float, if present
     district_df['PVI'] = district_df['PVI'].apply(pvi_to_r_score)
@@ -306,12 +338,12 @@ def load_congressional_time_for_change_data() -> pd.DataFrame:
 
     # Shed off extra columns
     district_df = district_df[['PVI', 'Location', 'Party', 'IncumbentResult', 'Year', 'Republican', 'TimeInOffice',
-                               'PreviousRepublican', 'BlowOut', 'PreviousRepublican2']]
+                               'PreviousRepublican', 'PreviousRepublican2', 'BlowOut']]
 
     # Fetch Time for Change Data
     tfc_columns_to_keep = ['GDP', 'Net Approval', 'Incumbent', 'Midterm Year', 'PresidentIncumbentParty',
                            'Time For Change Prediction', 'Republican TFC',
-                           'PreviousPresidentPVRepublican', 'PreviousPresidentPVRepublican2']
+                           'PreviousAverageRepublicanHouse', 'PreviousAverageRepublicanHouse2']
     district_df[tfc_columns_to_keep] = district_df[['Year']].apply(lambda x: get_series_data_for_year(x['Year']),
                                                                    axis=1)[tfc_columns_to_keep]
     district_df['PartiesMatch'] = district_df[
@@ -319,12 +351,12 @@ def load_congressional_time_for_change_data() -> pd.DataFrame:
     district_df['HouseIncumbentWon'] = district_df['IncumbentResult'] > 50
 
     # Calculate District House PVI
-    print(list(district_df.columns))
 
-    district_df['House PVI'] = calculate_house_pvi(district_df['PreviousPresidentPVRepublican'],
-                                                   district_df['PreviousPresidentPVRepublican2'],
-                                                   district_df['PreviousRepublican'],
-                                                   district_df['PreviousRepublican2'])
+    clear_blow_outs = lambda x: x if 15 < x < 85 else math.nan
+    district_df['House PVI'] = calculate_house_pvi(district_df['PreviousAverageRepublicanHouse'],
+                                                   district_df['PreviousAverageRepublicanHouse2'],
+                                                   district_df['PreviousRepublican'].apply(clear_blow_outs),
+                                                   district_df['PreviousRepublican2'].apply(clear_blow_outs))
 
     return district_df
 
@@ -398,3 +430,6 @@ def load_current_congressional_time_for_change_data():
     district_df['PartiesMatch'] = district_df[
         ['Party', 'PresidentIncumbentParty']].apply(lambda x: x['Party'] == x['PresidentIncumbentParty'], axis=1)
     return district_df
+
+c = load_congressional_time_for_change_data()
+d = c[c['House PVI'].isna()]
