@@ -135,12 +135,9 @@ def load_compiled_time_for_change_data():
 
     # Combine all favorabilities into one dataframe
     combined_approval = pd.concat([biden_df, trump_df, obama_df, historical_df], join='inner', ignore_index=True)
-    # combined_approval
-
     combined_approval['Approve'] = combined_approval['Approve'].apply(int)
     combined_approval['Disapprove'] = combined_approval['Disapprove'].apply(int)
     combined_approval['Net'] = combined_approval['Approve'] - combined_approval['Disapprove']
-    # combined_approval
 
     # National Elections
     national_elections = load_national_election()
