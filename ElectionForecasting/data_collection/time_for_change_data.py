@@ -153,50 +153,71 @@ def load_compiled_time_for_change_data():
     compiled_data = pd.DataFrame([get_data_for_year(year) for year in years_range], index=years_range)
     compiled_data['Avg Inflation'] = compiled_data['Avg Inflation'].astype('float')
 
-    compiled_data['Republican TFC'] = compiled_data[['Time For Change Prediction', 'PresidentIncumbentParty']].apply(lambda x: x['Time For Change Prediction'] if x['PresidentIncumbentParty'] == 'Republican' else 100-x['Time For Change Prediction'], axis=1)
+    compiled_data['Republican TFC'] = compiled_data[['Time For Change Prediction', 'PresidentIncumbentParty']].apply(
+        lambda x: x['Time For Change Prediction'] if x['PresidentIncumbentParty'] == 'Republican' else 100 - x[
+            'Time For Change Prediction'], axis=1)
     return compiled_data
 
 
+def rename_year(name: str) -> str:
+    """Change the year in a Location tag to two years in the future. This is used to transform the
+    Election Results to the Previous Election Results for a district."""
+    year, place = name.split('-', maxsplit=1)
+    year = str(int(year) + 2)
+    return '-'.join([year, place])
+
+
+def calculate_blowout(republican_percent: float, blow_out_factor: float = 65) -> str:
+    """Determine if an election was a republican or democrat blow out or neither."""
+    if republican_percent > blow_out_factor:
+        return 'Blow-out R'
+    if republican_percent < 100 - blow_out_factor:
+        return 'Blow-out D'
+    else:
+        return 'Not Blow-out D'
+
+
 @cache_download_csv_to_file('data/time_for_change/congressional_time_for_change.csv')
-def load_congressional_time_for_change_data():
+def load_congressional_time_for_change_data() -> pd.DataFrame:
     time_for_change_data = load_compiled_time_for_change_data()
 
-    def get_series_data_for_year(year):
+    def get_series_data_for_year(year: int) -> pd.Series:
+        """Extract the series data for a given year. This is a function for readability."""
         return time_for_change_data.loc[year]
 
-    def rename_year(name):
-        year, place = name.split('-', maxsplit=1)
-        year = str(int(year)+2)
-        return '-'.join([year, place])
-
-    def calculate_blowout(percent):
-        blow_out_factor = 65
-        if percent < 100-blow_out_factor:
-            return 'Blow-out D'
-        if percent > blow_out_factor:
-            return 'Blow-out R'
-        else:
-            return 'Not Blow-out D'
-
+    # Combine all congressional elections into one dataframe
     combined_congressional_data = pd.concat(list(congressional_district_results.values()))
+    # Pull only the columns we need later
     district_df = combined_congressional_data[
         ['PVI', 'Party', 'Democratic', 'Republican', 'Libertarian', 'Green', 'Year', 'TimeInOffice']]
+    # Add the Previous Republican results in each district and determine if it was a blowout year
     district_df['PreviousRepublican'] = district_df['Republican'].rename(rename_year, axis='index')
     district_df['BlowOut'] = district_df['PreviousRepublican'].apply(calculate_blowout)
+
+    # Reset the indices and move the indices to a 'Location' Column
     district_df = district_df.reset_index()
     district_df = district_df.rename(columns=({'index': 'Location'}))
+
+    # Get PVI as a float, if present
     district_df['PVI'] = district_df['PVI'].apply(pvi_to_r_score)
+
+    # Get Incumbent Results
     incumbent_result_columns = ['Party', 'Democratic', 'Republican', 'Libertarian', 'Green']
     district_df['IncumbentResult'] = district_df[incumbent_result_columns].apply(get_incumbent_result, axis=1)
+
+    # Shed off extra columns
     district_df = district_df[['PVI', 'Location', 'Party', 'IncumbentResult', 'Year', 'Republican', 'TimeInOffice',
                                'PreviousRepublican', 'BlowOut']]
-    columns_to_keep = ['GDP', 'Net Approval', 'Incumbent', 'Midterm Year', 'PresidentIncumbentParty',
+
+    # Fetch Time for Change Data
+    tfc_columns_to_keep = ['GDP', 'Net Approval', 'Incumbent', 'Midterm Year', 'PresidentIncumbentParty',
                        'Time For Change Prediction', 'Republican TFC']
-    district_df[columns_to_keep] = district_df[['Year']].apply((lambda x: get_series_data_for_year(x['Year'])), axis=1)[
-        columns_to_keep]
+    district_df[tfc_columns_to_keep] = district_df[['Year']].apply((lambda x: get_series_data_for_year(x['Year'])), axis=1)[
+        tfc_columns_to_keep]
     district_df['PartiesMatch'] = district_df[
         ['Party', 'PresidentIncumbentParty']].apply(lambda x: x['Party'] == x['PresidentIncumbentParty'], axis=1)
     district_df['HouseIncumbentWon'] = district_df['IncumbentResult'] > 50
+
     return district_df
 
 
