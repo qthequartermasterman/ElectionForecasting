@@ -19,6 +19,7 @@ def combine_dicts(dicts: Iterable[Dict]) -> Dict:
 def divide_subset_columns(df: pd.DataFrame, dividend_subset: List, divisor: str, in_place=True) -> pd.DataFrame:
     """
 
+    :param in_place:
     :param df:
     :param dividend_subset:
     :param divisor:
