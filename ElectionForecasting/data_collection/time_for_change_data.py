@@ -40,7 +40,34 @@ def load_national_election() -> pd.DataFrame:
     # Results come from here:
     popular_vote_url = 'https://en.wikipedia.org/wiki/List_of_United_States_presidential_elections_by_popular_vote_margin'
     # But it was easier to just modify the table by hand, so it's saved in `data/national_election_winners.csv`
-    return pd.read_csv('data/national_election_winners.csv', index_col='Year')
+    national_election = pd.read_csv('data/national_election_winners.csv', index_col='Year')
+
+    # Add the Republican and Democrat Popular Votes here for convenience
+    national_election['Total Votes'] = 2 * national_election['PV Votes'] - national_election['PV Margin']
+    national_election['Runner-up Votes'] = national_election['PV Votes'] - national_election['PV Margin']
+    national_election['Runner-up %'] = national_election['Runner-up Votes'] / national_election['Total Votes']
+
+    def calculate_party_results(df):
+        republican = democrat = math.nan
+        if df['Winner Party'] == 'Rep.':
+            republican = float(df['PV %'])
+        elif df['Winner Party'] == 'Dem.':
+            democrat = float(df['PV %'])
+
+        if df['Runner-up Party'] == 'Rep.':
+            republican = float(df['Runner-up %'])
+        elif df['Runner-up Party'] == 'Dem.':
+            democrat = float(df['Runner-up %'])
+
+        return pd.Series({'Republican': republican,
+                          'Democratic': democrat})
+
+    national_election[['Republican', 'Democratic']] = national_election[['Winner Party',
+                                                                         'PV %',
+                                                                         'Runner-up Party',
+                                                                         'Runner-up %']].apply(calculate_party_results,
+                                                                                               axis=1)
+    return national_election
 
 
 def load_aggregate_house_results() -> pd.DataFrame:
@@ -99,7 +126,7 @@ def load_trump_favorability() -> pd.DataFrame:
     return pd.DataFrame(trump_data)
 
 
-@cache_download_csv_to_file('data/time_for_change/biden_favorability.csv', refresh_time=24*7)
+@cache_download_csv_to_file('data/time_for_change/biden_favorability.csv', refresh_time=24 * 7)
 def load_biden_favorability() -> pd.DataFrame:
     # Download Biden favorability
     biden_url = 'https://news.gallup.com/wwwv7interactives/json/CURRENTPRESWEEKLY/codename.aspx?'
@@ -159,6 +186,10 @@ def load_compiled_time_for_change_data():
         previous_presidential_year = year - year % 4 if year % 4 else year - 4
         incumbent = 1 if national_elections['Winner'][previous_presidential_year] != national_elections['Winner'][
             previous_presidential_year - 4] else 0
+        previous_president_republican = national_elections.loc[previous_presidential_year, 'Republican']
+        previous_president_republican2 = national_elections.loc[previous_presidential_year-4, 'Republican']
+        previous_president_democratic = national_elections.loc[previous_presidential_year, 'Democratic']
+        previous_president_democratic2 = national_elections.loc[previous_presidential_year - 4, 'Democratic']
 
         # Calculate the Time for Change Prediction using the original coefficients
         time_for_change = 47.26 + .108 * net_approval + .543 * gdp + 4.313 * incumbent
@@ -190,7 +221,12 @@ def load_compiled_time_for_change_data():
                 'Avg Inflation': inflation_mean,
                 'House Incumbent Percent': house_incumbent_result,
                 'Midterm Year': midterm_year,
-                'PresidentIncumbentParty': presidential_incumbent_party}
+                'PresidentIncumbentParty': presidential_incumbent_party,
+                'PreviousPresidentPVRepublican': previous_president_republican,
+                'PreviousPresidentPVRepublican2': previous_president_republican2,
+                'PreviousPresidentPVDemocratic': previous_president_democratic,
+                'PreviousPresidentPVDemocratic2': previous_president_democratic2,
+                }
 
     years_range = range(1948, 2022, 2)
     compiled_data = pd.DataFrame([get_data_for_year(year) for year in years_range], index=years_range)
@@ -220,7 +256,8 @@ def calculate_blowout(republican_percent: float, blow_out_factor: float = 65) ->
         return 'Not Blow-out D'
 
 
-def calculate_house_pvi(presidential1: float, presidential2: float, house1: float, house2: float) -> float:
+def calculate_house_pvi(presidential1: pd.Series, presidential2: pd.Series,
+                        house1: pd.Series, house2: pd.Series) -> float:
     """
     Calculate the "House PVI" metric, which compares how a political entity compares to the national average.
 
@@ -255,6 +292,7 @@ def load_congressional_time_for_change_data() -> pd.DataFrame:
     district_df['BlowOut'] = district_df['PreviousRepublican'].apply(calculate_blowout)
     district_df['PreviousRepublican2'] = district_df['Republican'].rename(lambda x: rename_year(x, 4), axis='index')
 
+
     # Reset the indices and move the indices to a 'Location' Column
     district_df = district_df.reset_index()
     district_df = district_df.rename(columns=({'index': 'Location'}))
@@ -268,16 +306,25 @@ def load_congressional_time_for_change_data() -> pd.DataFrame:
 
     # Shed off extra columns
     district_df = district_df[['PVI', 'Location', 'Party', 'IncumbentResult', 'Year', 'Republican', 'TimeInOffice',
-                               'PreviousRepublican', 'BlowOut']]
+                               'PreviousRepublican', 'BlowOut', 'PreviousRepublican2']]
 
     # Fetch Time for Change Data
     tfc_columns_to_keep = ['GDP', 'Net Approval', 'Incumbent', 'Midterm Year', 'PresidentIncumbentParty',
-                           'Time For Change Prediction', 'Republican TFC']
+                           'Time For Change Prediction', 'Republican TFC',
+                           'PreviousPresidentPVRepublican', 'PreviousPresidentPVRepublican2']
     district_df[tfc_columns_to_keep] = district_df[['Year']].apply(lambda x: get_series_data_for_year(x['Year']),
                                                                    axis=1)[tfc_columns_to_keep]
     district_df['PartiesMatch'] = district_df[
         ['Party', 'PresidentIncumbentParty']].apply(lambda x: x['Party'] == x['PresidentIncumbentParty'], axis=1)
     district_df['HouseIncumbentWon'] = district_df['IncumbentResult'] > 50
+
+    # Calculate District House PVI
+    print(list(district_df.columns))
+
+    district_df['House PVI'] = calculate_house_pvi(district_df['PreviousPresidentPVRepublican'],
+                                                   district_df['PreviousPresidentPVRepublican2'],
+                                                   district_df['PreviousRepublican'],
+                                                   district_df['PreviousRepublican2'])
 
     return district_df
 
