@@ -35,7 +35,7 @@ def get_winner(election_series):
     return election_series[list(party_names)].astype(float).idxmax()
 
 
-@cache_download_csv_to_file('data/time_for_change/compiled_time_for_changed.csv')
+@cache_download_csv_to_file('data/time_for_change/compiled_time_for_change.csv')
 def load_compiled_time_for_change_data():
     """
     Download all the Economic and historical approval data necessary for the Time for Change model.
@@ -173,11 +173,10 @@ def load_congressional_time_for_change_data():
         blow_out_factor = 65
         if percent < 100-blow_out_factor:
             return 'Blow-out D'
-        # if percent > blow_out_factor:
-        #     return 'Blow-out R'
+        if percent > blow_out_factor:
+            return 'Blow-out R'
         else:
             return 'Not Blow-out D'
-
 
     combined_congressional_data = pd.concat(list(congressional_district_results.values()))
     district_df = combined_congressional_data[
