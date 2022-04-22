@@ -1,3 +1,5 @@
+from typing import Optional
+
 import pymc3 as pm
 
 import matplotlib.pyplot as plt
@@ -16,11 +18,20 @@ def logit(p):
 def generate_linzer_model(days: np.ndarray,
                           state_polls: np.ndarray,
                           national_polls: np.ndarray,
-                          fundamental_distribution: pm.Distribution,
+                          gdp: float,
+                          net_approval: float,
+                          incumbent: float,
+                          president_incumbent_party: str,
+                          previous_republican_share: float,
+                          fundamental_distribution: Optional[pm.Distribution] = None,
                           tune: int = 3000,
-                          draws: int = 1000) -> tuple[pm.Model, InferenceData]:
+                          draws: int = 1000,
+                          ) -> tuple[pm.Model, InferenceData]:
     """
 
+    :param gdp:
+    :param net_approval:
+    :param incumbent:
     :param draws:
     :param tune:
     :param days:
@@ -37,10 +48,39 @@ def generate_linzer_model(days: np.ndarray,
         σ_β = pm.HalfNormal('σ_β', .01)
         # τ = pm.Constant('tau', c=20)
         τ = pm.Uniform('τ', lower=10, upper=20)  # This is up to the discretion of the analyst
-        # β_J = pm.Normal('β_J', mu=pm.logit(h), tau=τ)  # Linzer's original starting (constant fundamental)
-        # Simulating variable fundamental predictions
-        # fundamental_dist = pm.Normal('f', mu=pm.logit(fundamental), sigma=.1)
-        fundamental_dist = linzer_model.Var('fundamental', fundamental_distribution)
+
+        if fundamental_distribution:
+            # β_J = pm.Normal('β_J', mu=pm.logit(h), tau=τ)  # Linzer's original starting (constant fundamental)
+            # Simulating variable fundamental predictions
+            # fundamental_dist = pm.Normal('f', mu=pm.logit(fundamental), sigma=.1)
+            fundamental_dist = linzer_model.Var('fundamental', fundamental_distribution)
+        else:
+            # Sampling fundamental priors directly
+            # These are hardcoded in using values from time_for_change.ipynb.
+            # TODO: Get this distribution automatically
+            tfc_intercept = pm.Normal('tfc_Intercept', mu=49.439, sigma=2.332)
+            tfc_gdp = pm.Normal('tfc_GDP', mu=0.094, sigma=0.358)
+            tfc_net_approval = pm.Normal('tfc_Net_Approval', mu=0.086, sigma=0.051)
+            tfc_incumbent = pm.Normal('tfc_Incumbent', mu=2.416, sigma=2.500)
+            tfc = pm.Deterministic('tfc',
+                                   tfc_intercept +
+                                   tfc_gdp * gdp +
+                                   tfc_net_approval * net_approval +
+                                   tfc_incumbent * incumbent
+                                   )
+            tfc_republican = tfc if president_incumbent_party == 'Republican' else 100 - tfc
+
+            fundamental_intercept = pm.Normal('fund_intercept', mu=-1.460050, sigma=0.008357)
+            fundamental_tfc_coef = pm.Normal('fund_tfc_coef', mu=0.005842, sigma=0.000164)
+            # We set this as constant because the standard deviation is so small we get underflows
+            fundamental_prev_repub_coef = 0.023978
+            # fundamental_prev_repub_coef = pm.Normal('fund_prev_repub_coef', mu=0.023978, sigma=0.000034)
+            unscaled_fundamental_distribution = pm.Deterministic('fundamental',
+                                                                 fundamental_intercept +
+                                                                 fundamental_tfc_coef * tfc_republican +
+                                                                 fundamental_prev_repub_coef * previous_republican_share)
+            fundamental_dist = pm.logit(unscaled_fundamental_distribution / 100)
+
         β_J = pm.Normal.dist(mu=fundamental_dist, tau=τ)
         μ_β = pm.GaussianRandomWalk('μ_β',
                                     sigma=σ_β,
@@ -135,7 +175,16 @@ if __name__ == '__main__':
     national_polls[::10] = None
     national_polls[::5] = None
     national_polls[-20:] = None
-    linzer_model, trace = generate_linzer_model(days, state_polls, national_polls, fundamental, tune=1000, draws=1000)
+    linzer_model, trace = generate_linzer_model(days,
+                                                state_polls,
+                                                national_polls,
+                                                gdp=-9.08374,
+                                                net_approval=-13,
+                                                incumbent=1,
+                                                president_incumbent_party='Democratic',
+                                                previous_republican_share=90,
+                                                # fundamental_distribution=fundamental
+                                                )
     polls_forecast = linzer_model_predict_from_trace(linzer_model, trace)
     plot = plot_poll_forecast(days,
                               polls_forecast,
