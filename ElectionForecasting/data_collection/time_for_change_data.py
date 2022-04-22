@@ -136,7 +136,7 @@ def load_biden_favorability() -> pd.DataFrame:
     return pd.DataFrame(biden_data)
 
 
-@cache_download_csv_to_file('data/time_for_change/compiled_time_for_change.csv')
+@cache_download_csv_to_file('data/time_for_change/compiled_time_for_change.csv', refresh_time=24 * 7)
 def load_compiled_time_for_change_data():
     """
     Download all the Economic and historical approval data necessary for the Time for Change model.
@@ -284,7 +284,7 @@ def calculate_house_pvi(presidential1: pd.Series, presidential2: pd.Series,
     return house_avg - pres_avg
 
 
-@cache_download_csv_to_file('data/time_for_change/congressional_time_for_change.csv')
+@cache_download_csv_to_file('data/time_for_change/congressional_time_for_change.csv', refresh_time=24 * 7)
 def load_congressional_time_for_change_data() -> pd.DataFrame:
     time_for_change_data = load_compiled_time_for_change_data()
 
