@@ -119,7 +119,7 @@ def linzer_model_predict_from_trace(linzer_model: pm.Model,
     return inv_logit(ppc[f'β_{name}'] + ppc[f'δ_{name}'])[:, ::-1]
 
 
-def get_final_polls_forecasted(trace: InferenceData, name:str) -> InferenceData:
+def get_final_polls_forecasted(trace: InferenceData, name: str) -> InferenceData:
     """
     Get all of the sampled final polls forecasts from a trace
     :param trace: InferenceData holding the sample data from a PYMC3 forecasting model
@@ -167,19 +167,31 @@ if __name__ == '__main__':
     sample_days = np.arange(80)
     h = .75
     fundamental = pm.Normal.dist(mu=.6, sigma=.1)
-    sample_state_polls = np.clip(np.random.normal(h + .01, .01, size=sample_days.size), a_min=0.01, a_max=.99)
+    sample_state_polls1 = np.clip(np.random.normal(h + .01, .01, size=sample_days.size), a_min=0.01, a_max=.99)
     sample_national_polls = np.clip(
         np.random.normal((h - .01) - np.exp(-np.arange(80) / 10), .03, size=sample_days.size), a_min=0.01,
         a_max=.99)
     # We only record state polls (on a 5-day cycle) on days 4, and we don't know the last 10 days
-    sample_state_polls[::5] = None
+    sample_state_polls1[::5] = None
 
-    sample_state_polls_df = pd.DataFrame(data=sample_state_polls.reshape(1, -1),
-                                         index=['District 1'],
+    # District 2 will be exactly 10 points lower than 1
+    sample_state_poll2 = np.clip(sample_state_polls1 - 0.10, a_min=0.01, a_max=.99)
+
+
+    # Compile all the district data
+    district_names = ['District 1', 'District 2']
+    sample_state_polls_all = np.stack([sample_state_polls1,
+                                       sample_state_poll2]
+                                      )
+
+    sample_state_polls_df = pd.DataFrame(data=sample_state_polls_all,
+                                         # data=sample_state_polls1.reshape(1, -1),
+                                         # index=['District 1'],
+                                         index=district_names,
                                          columns=[f'day_{day}' for day in sample_days]
                                          )
-    sample_state_polls_df['PreviousRepublican'] = pd.Series(data=['60'],
-                                                            index=['District 1']).astype(float)
+    sample_state_polls_df['PreviousRepublican'] = pd.Series(data=['60']*len(district_names),
+                                                            index=district_names).astype(float)
     print(sample_state_polls_df)
     # state_polls[-10:] = None
     # We only record national polls (on a 10-day cycle) on days 4,5,6,7,8,9, and we don't know the last 20 days
@@ -196,6 +208,6 @@ if __name__ == '__main__':
     polls_forecast = linzer_model_predict_from_trace(linzer_model, trace, 'District 1')
     plot = plot_poll_forecast(sample_days,
                               polls_forecast,
-                              sample_state_polls,
+                              sample_state_polls1,
                               sample_national_polls)
     plt.show()
