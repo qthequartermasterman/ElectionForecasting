@@ -1,5 +1,6 @@
-from typing import Optional
+from typing import Optional, Union
 
+import pandas as pd
 import pymc3 as pm
 
 import matplotlib.pyplot as plt
@@ -7,28 +8,30 @@ import numpy as np
 from arviz import InferenceData
 
 
-def inv_logit(p):
+def inv_logit(p: Union[float, np.ndarray]) -> np.ndarray:
+    """
+    Inverse logit function (i.e. sigmoid function) which maps the reals to a probability
+    :param p: any real value to map to a probability
+    :return: a probability
+    """
     return np.exp(p) / (1 + np.exp(p))
 
 
-def logit(p):
+def logit(p: Union[float, np.ndarray]) -> np.ndarray:
+    """
+    Logit function (i.e. inverse sigmoid) which maps probabilities to the reals
+    :param p: any probability to map to the reals
+    :return: a real number
+    """
     return np.log(p) - np.log(1 - p)
 
 
-def generate_linzer_model(days: np.ndarray,
-                          state_polls: np.ndarray,
-                          national_polls: np.ndarray,
-                          gdp: float,
-                          net_approval: float,
-                          incumbent: float,
-                          president_incumbent_party: str,
-                          previous_republican_share: float,
-                          fundamental_distribution: Optional[pm.Distribution] = None,
-                          tune: int = 3000,
-                          draws: int = 1000,
-                          ) -> tuple[pm.Model, InferenceData]:
+def generate_linzer_model(days: np.ndarray, state_polls: pd.DataFrame, national_polls: np.ndarray, gdp: float,
+                          net_approval: float, incumbent: float, president_incumbent_party: str, tune: int = 3000,
+                          draws: int = 1000) -> tuple[pm.Model, InferenceData]:
     """
 
+    :param president_incumbent_party:
     :param gdp:
     :param net_approval:
     :param incumbent:
@@ -37,10 +40,9 @@ def generate_linzer_model(days: np.ndarray,
     :param days:
     :param state_polls:
     :param national_polls:
-    :param fundamental_distribution:
     :return:
     """
-    state_observed = logit(state_polls)
+    state_observed = state_polls.drop(columns=['PreviousRepublican']).applymap(logit)
     national_observed = logit(national_polls) - state_observed
 
     with pm.Model() as linzer_model:
@@ -49,52 +51,51 @@ def generate_linzer_model(days: np.ndarray,
         # τ = pm.Constant('tau', c=20)
         τ = pm.Uniform('τ', lower=10, upper=20)  # This is up to the discretion of the analyst
 
-        if fundamental_distribution:
-            # β_J = pm.Normal('β_J', mu=pm.logit(h), tau=τ)  # Linzer's original starting (constant fundamental)
-            # Simulating variable fundamental predictions
-            # fundamental_dist = pm.Normal('f', mu=pm.logit(fundamental), sigma=.1)
-            fundamental_dist = linzer_model.Var('fundamental', fundamental_distribution)
-        else:
-            # Sampling fundamental priors directly
-            # These are hardcoded in using values from time_for_change.ipynb.
-            # TODO: Get this distribution automatically
-            tfc_intercept = pm.Normal('tfc_Intercept', mu=49.439, sigma=2.332)
-            tfc_gdp = pm.Normal('tfc_GDP', mu=0.094, sigma=0.358)
-            tfc_net_approval = pm.Normal('tfc_Net_Approval', mu=0.086, sigma=0.051)
-            tfc_incumbent = pm.Normal('tfc_Incumbent', mu=2.416, sigma=2.500)
-            tfc = pm.Deterministic('tfc',
-                                   tfc_intercept +
-                                   tfc_gdp * gdp +
-                                   tfc_net_approval * net_approval +
-                                   tfc_incumbent * incumbent
-                                   )
-            tfc_republican = tfc if president_incumbent_party == 'Republican' else 100 - tfc
+        # Sampling fundamental priors directly
+        # These are hardcoded in using values from time_for_change.ipynb.
+        # TODO: Get this distribution automatically
+        tfc_intercept = pm.Normal('tfc_Intercept', mu=49.439, sigma=2.332)
+        tfc_gdp = pm.Normal('tfc_GDP', mu=0.094, sigma=0.358)
+        tfc_net_approval = pm.Normal('tfc_Net_Approval', mu=0.086, sigma=0.051)
+        tfc_incumbent = pm.Normal('tfc_Incumbent', mu=2.416, sigma=2.500)
+        tfc = pm.Deterministic('tfc',
+                               tfc_intercept +
+                               tfc_gdp * gdp +
+                               tfc_net_approval * net_approval +
+                               tfc_incumbent * incumbent
+                               )
+        tfc_republican = tfc if president_incumbent_party == 'Republican' else 100 - tfc
 
-            fundamental_intercept = pm.Normal('fund_intercept', mu=-1.460050, sigma=0.008357)
-            fundamental_tfc_coef = pm.Normal('fund_tfc_coef', mu=0.005842, sigma=0.000164)
-            # We set this as constant because the standard deviation is so small we get underflows
-            fundamental_prev_repub_coef = 0.023978
-            # fundamental_prev_repub_coef = pm.Normal('fund_prev_repub_coef', mu=0.023978, sigma=0.000034)
-            unscaled_fundamental_distribution = pm.Deterministic('fundamental',
+        fundamental_intercept = pm.Normal('fund_intercept', mu=-1.460050, sigma=0.008357)
+        fundamental_tfc_coef = pm.Normal('fund_tfc_coef', mu=0.005842, sigma=0.000164)
+        # We set this as constant because the standard deviation is so small we get underflows
+        fundamental_prev_repub_coef = 0.023978
+        # fundamental_prev_repub_coef = pm.Normal('fund_prev_repub_coef', mu=0.023978, sigma=0.000034)
+
+        for name in state_polls.index:
+            unscaled_fundamental_distribution = pm.Deterministic(f'fundamental_{name}',
                                                                  fundamental_intercept +
                                                                  fundamental_tfc_coef * tfc_republican +
-                                                                 fundamental_prev_repub_coef * previous_republican_share)
+                                                                 (fundamental_prev_repub_coef
+                                                                  * state_polls.loc[name, 'PreviousRepublican'])
+                                                                 )
             fundamental_dist = pm.logit(unscaled_fundamental_distribution / 100)
 
-        β_J = pm.Normal.dist(mu=fundamental_dist, tau=τ)
-        μ_β = pm.GaussianRandomWalk('μ_β',
-                                    sigma=σ_β,
-                                    init=β_J,
-                                    shape=len(days)
-                                    )
-        μ_δ = pm.GaussianRandomWalk('μ_δ',
-                                    sigma=σ_δ,
-                                    shape=len(days)
-                                    )
-        β = pm.Normal('β', mu=μ_β, sigma=σ_β, observed=state_observed[::-1])
-        δ = pm.Normal('δ', mu=μ_δ, sigma=σ_δ, observed=national_observed[::-1])
-        π = pm.Deterministic('π', pm.invlogit(β + δ))
-        # y_k = pm.Binomial('y_k', p=π[-1], n=1000)
+            β_J = pm.Normal.dist(mu=fundamental_dist, tau=τ)
+            print(β_J)
+            μ_β = pm.GaussianRandomWalk(f'μ_β_{name}',
+                                        sigma=σ_β,
+                                        init=β_J,
+                                        shape=len(days)
+                                        )
+            μ_δ = pm.GaussianRandomWalk(f'μ_δ_{name}',
+                                        sigma=σ_δ,
+                                        shape=len(days)
+                                        )
+            β = pm.Normal(f'β_{name}', mu=μ_β, sigma=σ_β, observed=state_observed.loc[name].values[::-1])
+            δ = pm.Normal(f'δ_{name}', mu=μ_δ, sigma=σ_δ, observed=national_observed.loc[name].values[::-1])
+            π = pm.Deterministic(f'π_{name}', pm.invlogit(β + δ))
+            # y_k = pm.Binomial('y_k', p=π[-1], n=1000)
 
         trace: InferenceData = pm.sample(draws=draws,
                                          tune=tune,
@@ -103,7 +104,8 @@ def generate_linzer_model(days: np.ndarray,
 
 
 def linzer_model_predict_from_trace(linzer_model: pm.Model,
-                                    trace: InferenceData) -> np.ndarray:
+                                    trace: InferenceData,
+                                    name: str) -> np.ndarray:
     """
     Given a Linzer model and a trace (from sampling the given linzer model), make forecast
     :param linzer_model: Pymc3 model for forecasting polls that has been sampled from polling data
@@ -114,17 +116,17 @@ def linzer_model_predict_from_trace(linzer_model: pm.Model,
         ppc = pm.sample_posterior_predictive(trace)
     # Since the Beta and Delta (State and National Poll) forecasts work backward in time as they walk, we return the
     # reverse of their sums
-    return inv_logit(ppc['β'] + ppc['δ'])[:, ::-1]
+    return inv_logit(ppc[f'β_{name}'] + ppc[f'δ_{name}'])[:, ::-1]
 
 
-def get_final_polls_forecasted(trace: InferenceData) -> InferenceData:
+def get_final_polls_forecasted(trace: InferenceData, name:str) -> InferenceData:
     """
     Get all of the sampled final polls forecasts from a trace
     :param trace: InferenceData holding the sample data from a PYMC3 forecasting model
     :return: InferenceData containing only the final forecasted polls. Shape=(NUM_CHAINS, NUM_DRAWS)
     """
     # Final Polls
-    return trace.posterior['π'][:, :, -1]
+    return trace.posterior[f'π_{name}'][:, :, -1]
 
 
 # # Probability of greater than 50% of votes
@@ -162,32 +164,38 @@ def plot_poll_forecast(days: np.ndarray,
 
 if __name__ == '__main__':
     # Sample/Test Data
-    days = np.arange(80)
+    sample_days = np.arange(80)
     h = .75
     fundamental = pm.Normal.dist(mu=.6, sigma=.1)
-    state_polls = np.clip(np.random.normal(h + .01, .01, size=days.size), a_min=0.01, a_max=.99)
-    national_polls = np.clip(np.random.normal((h - .01) - np.exp(-np.arange(80) / 10), .03, size=days.size), a_min=0.01,
-                             a_max=.99)
-    # We only record national polls (on a 5-day cycle) on days 4, and we don't know the last 10 days
-    state_polls[::5] = None
+    sample_state_polls = np.clip(np.random.normal(h + .01, .01, size=sample_days.size), a_min=0.01, a_max=.99)
+    sample_national_polls = np.clip(
+        np.random.normal((h - .01) - np.exp(-np.arange(80) / 10), .03, size=sample_days.size), a_min=0.01,
+        a_max=.99)
+    # We only record state polls (on a 5-day cycle) on days 4, and we don't know the last 10 days
+    sample_state_polls[::5] = None
+
+    sample_state_polls_df = pd.DataFrame(data=sample_state_polls.reshape(1, -1),
+                                         index=['District 1'],
+                                         columns=[f'day_{day}' for day in sample_days]
+                                         )
+    sample_state_polls_df['PreviousRepublican'] = pd.Series(data=['60'],
+                                                            index=['District 1']).astype(float)
+    print(sample_state_polls_df)
     # state_polls[-10:] = None
     # We only record national polls (on a 10-day cycle) on days 4,5,6,7,8,9, and we don't know the last 20 days
-    national_polls[::10] = None
-    national_polls[::5] = None
-    national_polls[-20:] = None
-    linzer_model, trace = generate_linzer_model(days,
-                                                state_polls,
-                                                national_polls,
+    sample_national_polls[::10] = None
+    sample_national_polls[::5] = None
+    sample_national_polls[-20:] = None
+    linzer_model, trace = generate_linzer_model(sample_days,
+                                                sample_state_polls_df,
+                                                sample_national_polls,
                                                 gdp=-9.08374,
                                                 net_approval=-13,
                                                 incumbent=1,
-                                                president_incumbent_party='Democratic',
-                                                previous_republican_share=90,
-                                                # fundamental_distribution=fundamental
-                                                )
-    polls_forecast = linzer_model_predict_from_trace(linzer_model, trace)
-    plot = plot_poll_forecast(days,
+                                                president_incumbent_party='Democratic')
+    polls_forecast = linzer_model_predict_from_trace(linzer_model, trace, 'District 1')
+    plot = plot_poll_forecast(sample_days,
                               polls_forecast,
-                              state_polls,
-                              national_polls)
+                              sample_state_polls,
+                              sample_national_polls)
     plt.show()
