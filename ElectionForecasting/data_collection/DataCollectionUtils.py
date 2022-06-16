@@ -2,6 +2,7 @@ from functools import wraps
 import pandas as pd
 import os
 import time
+import logging
 
 
 def cache_download_csv_to_file(filename, refresh_time=None):
@@ -20,7 +21,7 @@ def cache_download_csv_to_file(filename, refresh_time=None):
 
             try:
                 if refresh_time is not None and os.path.getmtime(filename) + int(refresh_time * 60 * 60) < time.time():
-                    print('File is too old')
+                    logging.info(f'File {filename} is too old.')
                     raise FileNotFoundError(f'{filename} is too old and needs to be refreshed')
                 dataframe: pd.DataFrame = pd.read_csv(filename, index_col=0)
             except FileNotFoundError:
