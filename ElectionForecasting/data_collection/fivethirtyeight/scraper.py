@@ -1,6 +1,6 @@
 from collections import defaultdict
 from typing import Optional
-from datetime import date
+from datetime import date, timedelta
 import pandas as pd
 
 import urls
@@ -57,14 +57,19 @@ def get_raw_generic_ballot_poll_data(url: Optional[str] = None) -> pd.DataFrame:
     return poll_csv
 
 
-def compile_raw_polls_to_timeseries(raw_poll_df: pd.DataFrame, party: str, election_date: date) -> pd.DataFrame:
+def compile_raw_polls_to_timeseries(raw_poll_df: pd.DataFrame, party: str, election_date: date,
+                                    starting_date: Optional[date] = None) -> pd.DataFrame:
     compiled_df: pd.DataFrame = pd.DataFrame()
     # Take each row, and put the poll results in the correct date column and district row
 
     district_date_counts = defaultdict(lambda: 0)
     for index, row in raw_poll_df.iterrows():
         # print(row['election_date'], row['party'])
-        if row['election_date'] == election_date and row['party'] == party:
+        if (
+                row['election_date'] == election_date and
+                row['party'] == party and
+                (not starting_date or (row['end_date'] > starting_date))
+        ):
             # TODO: Logic about what to do if multiple polls for a district occur on the same date
             # TODO: For now, just take the average
             if row['District'] in compiled_df.index and row['end_date'] in compiled_df.columns:
@@ -86,8 +91,9 @@ def get_raw_house_data(url: Optional[str] = None) -> pd.DataFrame:
 
 
 @cache_download_csv_to_file('data/fivethirtyeight/house_raw_poll_timeseries.csv', refresh_time=REFRESH_RATE)
-def compile_raw_house_data_to_timeseries(raw_poll_df: pd.DataFrame, party: str, election_date: date) -> pd.DataFrame:
-    return compile_raw_polls_to_timeseries(raw_poll_df, party, election_date)
+def compile_raw_house_data_to_timeseries(raw_poll_df: pd.DataFrame, party: str, election_date: date,
+                                         starting_date: Optional[date] = None) -> pd.DataFrame:
+    return compile_raw_polls_to_timeseries(raw_poll_df, party, election_date, starting_date)
 
 
 @cache_download_csv_to_file('data/fivethirtyeight/generic_ballot_raw.csv', refresh_time=REFRESH_RATE)
@@ -96,14 +102,18 @@ def get_raw_generic_ballot_data(url: Optional[str] = None) -> pd.DataFrame:
 
 
 @cache_download_csv_to_file('data/fivethirtyeight/generic_ballot_raw_poll_timeseries.csv', refresh_time=REFRESH_RATE)
-def compile_raw_generic_ballot_data_to_timeseries(raw_poll_df: pd.DataFrame, party: str,
-                                                  election_date: date) -> pd.DataFrame:
-    return compile_raw_polls_to_timeseries(raw_poll_df, party, election_date)
+def compile_raw_generic_ballot_data_to_timeseries(raw_poll_df: pd.DataFrame, party: str, election_date: date,
+                                                  starting_date: Optional[date] = None) -> pd.DataFrame:
+    return compile_raw_polls_to_timeseries(raw_poll_df, party, election_date, starting_date)
 
 
-raw = get_raw_house_data()
-raw_generic = get_raw_generic_ballot_data()
+if __name__ == '__main__':
+    num_days_polls = 240  # We will track the polls starting 80 days in advance
 
-election_date = str_to_date('11/8/22')
-compiled = compile_raw_house_data_to_timeseries(raw, 'Republican', election_date)
-compiled_generic = compile_raw_generic_ballot_data_to_timeseries(raw_generic, 'Republican', election_date)
+    raw = get_raw_house_data()
+    raw_generic = get_raw_generic_ballot_data()
+    election_date = str_to_date('11/8/22')
+    polls_start_date = election_date - timedelta(days=num_days_polls)
+
+    compiled = compile_raw_house_data_to_timeseries(raw, 'Republican', election_date,polls_start_date)
+    compiled_generic = compile_raw_generic_ballot_data_to_timeseries(raw_generic, 'Republican', election_date,polls_start_date)
