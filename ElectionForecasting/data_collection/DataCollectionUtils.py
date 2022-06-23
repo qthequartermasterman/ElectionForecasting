@@ -1,3 +1,4 @@
+from datetime import date
 from functools import wraps
 import pandas as pd
 import os
@@ -32,3 +33,10 @@ def cache_download_csv_to_file(filename, refresh_time=None):
         return inside_wrapper
 
     return cache_wrapper
+
+
+def str_to_date(date_str: str) -> date:
+    m, d, y = date_str.split('/')
+    m, d, y = int(m), int(d), 2000 + int(y)
+    # print(m, d, y)
+    return date(y, m, d)

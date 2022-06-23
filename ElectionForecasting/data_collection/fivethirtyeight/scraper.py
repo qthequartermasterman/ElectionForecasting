@@ -5,7 +5,7 @@ import pandas as pd
 
 import urls
 
-from ElectionForecasting.data_collection.DataCollectionUtils import cache_download_csv_to_file
+from ElectionForecasting.data_collection.DataCollectionUtils import cache_download_csv_to_file, str_to_date
 
 REFRESH_RATE = 0  # 12  # Refresh this every 12 hr
 
@@ -25,13 +25,6 @@ def rename_party(party: str) -> str:
     if party.upper() == 'GRN':
         return 'Green'
     return 'Independent'
-
-
-def str_to_date(date_str: str) -> date:
-    m, d, y = date_str.split('/')
-    m, d, y = int(m), int(d), 2000 + int(y)
-    print(m, d, y)
-    return date(y, m, d)
 
 
 def get_raw_poll_data(url: Optional[str] = None) -> pd.DataFrame:
