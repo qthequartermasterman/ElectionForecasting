@@ -33,8 +33,6 @@ class RealClearPoliticsScraper(AbstractScraper):
                                                                       'Democrats (D)': 'Democratic',
                                                                       })
         raw['District'] = 'Generic Ballot'
-        raw['pct'] = raw['Republican']
-        raw['party'] = 'Republican'
         raw[['StartDate', 'EndDate']] = raw['Date'].apply(split_date)
         raw['ElectionDate'] = ELECTION_DATE
         raw['Libertarian'] = 0

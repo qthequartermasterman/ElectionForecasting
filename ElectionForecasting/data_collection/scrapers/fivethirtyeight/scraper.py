@@ -23,7 +23,7 @@ class FiveThirtyEightScraper(AbstractScraper):
         party_col = FiveThirtyEightScraper.party_col
         end_date_col = FiveThirtyEightScraper.end_date_col
         election_date_col = FiveThirtyEightScraper.election_date_col
-        percent_col=FiveThirtyEightScraper.percent_col
+        percent_col = FiveThirtyEightScraper.percent_col
 
         poll_url = url
         poll_csv = pd.read_csv(poll_url, index_col='poll_id')
@@ -42,14 +42,23 @@ class FiveThirtyEightScraper(AbstractScraper):
         end_date_col = FiveThirtyEightScraper.end_date_col
         election_date_col = FiveThirtyEightScraper.election_date_col
         percent_col = FiveThirtyEightScraper.percent_col
+        start_date_col = FiveThirtyEightScraper.start_date_col
 
         poll_csv = pd.read_csv(url, index_col='poll_id')
         poll_csv[district_col] = 'Generic Ballot'
         poll_csv[end_date_col] = poll_csv['end_date'].apply(str_to_date)
         poll_csv[election_date_col] = poll_csv['election_date'].apply(str_to_date)
-        poll_csv = poll_csv.rename(columns={'rep': 'Republican', 'dem': 'Democratic', 'ind': 'Independent'})
+        poll_csv = poll_csv.rename(columns={'rep': 'Republican',
+                                            'dem': 'Democratic',
+                                            'ind': 'Independent',
+                                            'start_date': start_date_col,
+                                            'end_date':end_date_col,
+                                            'pct': percent_col
+                                            })
         poll_csv[percent_col] = poll_csv['Republican']
         poll_csv[party_col] = 'Republican'
+        poll_csv['Libertarian'] = 0
+        poll_csv['Green'] = 0
         return poll_csv
 
     @classmethod
