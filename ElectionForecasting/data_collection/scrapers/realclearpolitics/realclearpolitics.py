@@ -9,6 +9,7 @@ from ElectionForecasting.data_collection.scrapers.AbstractScraper import Abstrac
 
 generic_ballot_url = 'https://www.realclearpolitics.com/epolls/other/2022-generic-congressional-vote-7361.html'
 
+ELECTION_DATE=str_to_date('11/8/22')
 
 # polls = get_polls(candidate="Biden")[0]
 # data = get_poll_data(polls['url'], csv_output=True)
@@ -34,7 +35,11 @@ class RealClearPoliticsScraper(AbstractScraper):
         raw['District'] = 'Generic Ballot'
         raw['pct'] = raw['Republican']
         raw['party'] = 'Republican'
-        raw[['start_date', 'end_date']] = raw['Date'].apply(split_date)
+        raw[['StartDate', 'EndDate']] = raw['Date'].apply(split_date)
+        raw['ElectionDate'] = ELECTION_DATE
+        raw['Libertarian'] = 0
+        raw['Green'] = 0
+        raw['Independent'] = 0
         return raw
 
     @classmethod

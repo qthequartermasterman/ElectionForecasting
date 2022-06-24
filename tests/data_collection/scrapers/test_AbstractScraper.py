@@ -20,6 +20,17 @@ def test_get_raw_house_data(scraper_type):
         assert col in raw_house_polls.columns
 
 
+@pytest.mark.parametrize('scraper_type', list(AbstractScraper.get_registry().values()))
+def test_get_raw_generic_ballot_data(scraper_type):
+    # Ensure every scraper has the correct columns in its raw house data
+    scraper: AbstractScraper = scraper_type()
+    columns = ['EndDate', 'StartDate', 'ElectionDate', 'District', 'Republican', 'Democratic', 'Libertarian', 'Green', 'Independent']
+
+    raw_house_polls: pd.DataFrame = scraper.get_raw_generic_ballot_data()
+    for col in columns:
+        assert col in raw_house_polls.columns
+
+
 class TestAbstractScraper(TestCase):
 
     def setUp(self) -> None:
