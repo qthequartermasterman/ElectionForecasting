@@ -4,9 +4,10 @@ import pandas as pd
 import os
 import time
 import logging
+from pathlib import Path
 
 
-def cache_download_csv_to_file(filename, refresh_time=None):
+def cache_download_csv_to_file(filename, refresh_time=None, create_dirs=True):
     """
     Save a pandas DataFrame to a csv file for faster caching.
     :param filename: filepath to save the cached csv
@@ -22,10 +23,12 @@ def cache_download_csv_to_file(filename, refresh_time=None):
 
             try:
                 if refresh_time is not None and os.path.getmtime(filename) + int(refresh_time * 60 * 60) < time.time():
-                    logging.info(f'File {filename} is too old.')
+                    logging.info(f'File {filename}n is too old.')
                     raise FileNotFoundError(f'{filename} is too old and needs to be refreshed')
                 dataframe: pd.DataFrame = pd.read_csv(filename, index_col=0)
             except FileNotFoundError:
+                if create_dirs:
+                    Path(filename).parent.mkdir(exist_ok=True, parents=True)
                 dataframe = func(*args, **kwargs)
                 dataframe.to_csv(filename)
             return dataframe
