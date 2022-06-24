@@ -14,25 +14,35 @@ REFRESH_RATE = 0  # 12  # Refresh this every 12 hr
 class FiveThirtyEightScraper(AbstractScraper):
     @staticmethod
     def get_raw_poll_data(url: Optional[str] = None) -> pd.DataFrame:
+        district_col = FiveThirtyEightScraper.district_col
+        party_col = FiveThirtyEightScraper.party_col
+        end_date_col = FiveThirtyEightScraper.end_date_col
+        election_date_col = FiveThirtyEightScraper.election_date_col
+
         poll_url = url
         poll_csv = pd.read_csv(poll_url, index_col='poll_id')
-        poll_csv['District'] = poll_csv['state'].astype(str) + '-' + poll_csv['seat_number'].astype(str).str.pad(2,
-                                                                                                                 fillchar='0')
-        poll_csv['party'] = poll_csv['party'].apply(rename_party)
-        poll_csv['end_date'] = poll_csv['end_date'].apply(str_to_date)
-        poll_csv['election_date'] = poll_csv['election_date'].apply(str_to_date)
+        poll_csv[district_col] = poll_csv['state'].astype(str) + '-' + poll_csv['seat_number'].astype(str).str.pad(2,
+                                                                                                                   fillchar='0')
+        poll_csv[party_col] = poll_csv['party'].apply(rename_party)
+        poll_csv[end_date_col] = poll_csv['end_date'].apply(str_to_date)
+        poll_csv[election_date_col] = poll_csv['election_date'].apply(str_to_date)
         return poll_csv
 
     @staticmethod
     def get_raw_generic_ballot_poll_data(url: Optional[str] = None) -> pd.DataFrame:
-        poll_url = url
-        poll_csv = pd.read_csv(poll_url, index_col='poll_id')
-        poll_csv['District'] = 'Generic Ballot'
-        poll_csv['end_date'] = poll_csv['end_date'].apply(str_to_date)
-        poll_csv['election_date'] = poll_csv['election_date'].apply(str_to_date)
+        district_col = FiveThirtyEightScraper.district_col
+        party_col = FiveThirtyEightScraper.party_col
+        end_date_col = FiveThirtyEightScraper.end_date_col
+        election_date_col = FiveThirtyEightScraper.election_date_col
+        percent_col = FiveThirtyEightScraper.percent_col
+
+        poll_csv = pd.read_csv(url, index_col='poll_id')
+        poll_csv[district_col] = 'Generic Ballot'
+        poll_csv[end_date_col] = poll_csv['end_date'].apply(str_to_date)
+        poll_csv[election_date_col] = poll_csv['election_date'].apply(str_to_date)
         poll_csv = poll_csv.rename(columns={'rep': 'Republican', 'dem': 'Democratic', 'ind': 'Independent'})
-        poll_csv['pct'] = poll_csv['Republican']
-        poll_csv['party'] = 'Republican'
+        poll_csv[percent_col] = poll_csv['Republican']
+        poll_csv[party_col] = 'Republican'
         return poll_csv
 
     @classmethod
