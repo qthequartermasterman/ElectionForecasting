@@ -3,7 +3,10 @@ from typing import Optional
 from datetime import date, timedelta
 import pandas as pd
 
-import urls
+try:
+    from . import urls
+except ImportError:
+    import urls
 
 from ElectionForecasting.data_collection.DataCollectionUtils import cache_download_csv_to_file, str_to_date
 from ElectionForecasting.data_collection.scrapers.AbstractScraper import AbstractScraper
@@ -12,12 +15,15 @@ REFRESH_RATE = 0  # 12  # Refresh this every 12 hr
 
 
 class FiveThirtyEightScraper(AbstractScraper):
+    _registry_name = 'fivethirtyeight'
+
     @staticmethod
     def get_raw_poll_data(url: Optional[str] = None) -> pd.DataFrame:
         district_col = FiveThirtyEightScraper.district_col
         party_col = FiveThirtyEightScraper.party_col
         end_date_col = FiveThirtyEightScraper.end_date_col
         election_date_col = FiveThirtyEightScraper.election_date_col
+        percent_col=FiveThirtyEightScraper.percent_col
 
         poll_url = url
         poll_csv = pd.read_csv(poll_url, index_col='poll_id')
@@ -26,6 +32,7 @@ class FiveThirtyEightScraper(AbstractScraper):
         poll_csv[party_col] = poll_csv['party'].apply(rename_party)
         poll_csv[end_date_col] = poll_csv['end_date'].apply(str_to_date)
         poll_csv[election_date_col] = poll_csv['election_date'].apply(str_to_date)
+        poll_csv = poll_csv.rename(columns={'pct': percent_col})
         return poll_csv
 
     @staticmethod

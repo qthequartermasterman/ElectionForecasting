@@ -21,6 +21,7 @@ def split_date(date_interval_string: str) -> (datetime, datetime):
 
 
 class RealClearPoliticsScraper(AbstractScraper):
+    _registry_name = 'realclearpolitics'
 
     @classmethod
     def get_raw_generic_ballot_data(cls, url: Optional[str] = None) -> pd.DataFrame:

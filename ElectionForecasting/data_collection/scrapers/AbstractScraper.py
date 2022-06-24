@@ -1,15 +1,16 @@
-from abc import abstractmethod, ABCMeta
+from abc import abstractmethod
 from collections import defaultdict
 from datetime import date
 from typing import Optional
 
 import pandas as pd
 
+from ElectionForecasting.data_collection.scrapers.ABCRegistry import ABCRegistry
 
 
+class AbstractScraper(metaclass=ABCRegistry):
+    _registry_name = 'abstract_scraper'
 
-
-class AbstractScraper(metaclass=ABCMeta):
     # Define the column names
     end_date_col = 'EndDate'
     start_date_col = 'StartDate'
@@ -102,3 +103,5 @@ class AbstractScraper(metaclass=ABCMeta):
         compiled_df = compiled_df.sort_index()
         compiled_df = compiled_df.sort_index(axis=1, ascending=True)
         return compiled_df
+
+
