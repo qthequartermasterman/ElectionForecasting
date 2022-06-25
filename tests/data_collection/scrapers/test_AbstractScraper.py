@@ -18,7 +18,7 @@ SCRAPERS = [c for c in AbstractScraper.get_registry().values() if c._registry_na
 def test_get_raw_house_data(scraper_type):
     # Ensure every scraper has the correct columns in its raw house data
     scraper: AbstractScraper = scraper_type()
-    columns = ['EndDate', 'StartDate', 'ElectionDate', 'Party', 'District', 'Percent', ]
+    columns = ['EndDate', 'StartDate', 'ElectionDate', 'Party', 'District', 'Percent', 'PopulationType', 'SampleSize']
 
     raw_house_polls: pd.DataFrame = scraper.get_raw_house_data()
     for col in columns:
@@ -33,7 +33,7 @@ def test_get_raw_generic_ballot_data(scraper_type):
     # Ensure every scraper has the correct columns in its raw house data
     scraper: AbstractScraper = scraper_type()
     columns = ['EndDate', 'StartDate', 'ElectionDate', 'District', 'Republican', 'Democratic', 'Libertarian', 'Green',
-               'Independent']
+               'Independent', 'PopulationType', 'SampleSize']
 
     raw_house_polls: pd.DataFrame = scraper.get_raw_generic_ballot_data()
     for col in columns:
@@ -45,21 +45,25 @@ def test_get_raw_generic_ballot_data(scraper_type):
 
 @pytest.mark.parametrize('scraper_type', SCRAPERS)
 def test_compile_raw_house_data_to_timeseries(scraper_type):
+    scraper: AbstractScraper = scraper_type()
     pytest.fail()
 
 
 @pytest.mark.parametrize('scraper_type', SCRAPERS)
 def test_compile_raw_generic_ballot_data_to_timeseries(scraper_type):
+    scraper: AbstractScraper = scraper_type()
     pytest.fail()
 
 
 @pytest.mark.parametrize('scraper_type', SCRAPERS)
 def test_compile_raw_polls_to_timeseries_with_state_date(scraper_type):
+    scraper: AbstractScraper = scraper_type()
     pytest.fail()
     # TODO: assert only polls after start_date appear
 
 
 @pytest.mark.parametrize('scraper_type', SCRAPERS)
 def test_compile_raw_polls_to_timeseries_without_state_date(scraper_type):
+    scraper: AbstractScraper = scraper_type()
     pytest.fail()
     # TODO: Test start_date=None

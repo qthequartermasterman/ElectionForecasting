@@ -18,6 +18,8 @@ class AbstractScraper(metaclass=ABCRegistry):
     party_col = 'Party'
     district_col = 'District'
     percent_col = 'Percent'
+    population_col='PopulationType'
+    sample_size_col='SampleSize'
 
     @staticmethod
     @abstractmethod
