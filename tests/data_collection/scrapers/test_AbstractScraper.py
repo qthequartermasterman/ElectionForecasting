@@ -9,7 +9,13 @@ from ElectionForecasting.data_collection.scrapers.realclearpolitics.realclearpol
 import pytest
 
 
-@pytest.mark.parametrize('scraper_type', list(AbstractScraper.get_registry().values()))
+# Since AbstractScraper is a template class, we want to run the below tests on ALL scrapers
+# We do this by getting every registered subclass of AbstractScraper and putting them in a list.
+# We make sure to ignore AbstractScraper itself, since it cannot be instantiated
+SCRAPERS = [c for c in AbstractScraper.get_registry().values() if c._registry_name != AbstractScraper._registry_name]
+
+
+@pytest.mark.parametrize('scraper_type', SCRAPERS)
 def test_get_raw_house_data(scraper_type):
     # Ensure every scraper has the correct columns in its raw house data
     scraper: AbstractScraper = scraper_type()
@@ -20,7 +26,7 @@ def test_get_raw_house_data(scraper_type):
         assert col in raw_house_polls.columns
 
 
-@pytest.mark.parametrize('scraper_type', list(AbstractScraper.get_registry().values()))
+@pytest.mark.parametrize('scraper_type', SCRAPERS)
 def test_get_raw_generic_ballot_data(scraper_type):
     # Ensure every scraper has the correct columns in its raw house data
     scraper: AbstractScraper = scraper_type()
