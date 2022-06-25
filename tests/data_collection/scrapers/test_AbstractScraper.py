@@ -8,7 +8,6 @@ from ElectionForecasting.data_collection.scrapers.realclearpolitics.realclearpol
 
 import pytest
 
-
 # Since AbstractScraper is a template class, we want to run the below tests on ALL scrapers
 # We do this by getting every registered subclass of AbstractScraper and putting them in a list.
 # We make sure to ignore AbstractScraper itself, since it cannot be instantiated
@@ -25,36 +24,42 @@ def test_get_raw_house_data(scraper_type):
     for col in columns:
         assert col in raw_house_polls.columns
 
+    # Assert that every column is unique--no duplicated headers that could break things
+    assert raw_house_polls.columns.is_unique
+
 
 @pytest.mark.parametrize('scraper_type', SCRAPERS)
 def test_get_raw_generic_ballot_data(scraper_type):
     # Ensure every scraper has the correct columns in its raw house data
     scraper: AbstractScraper = scraper_type()
-    columns = ['EndDate', 'StartDate', 'ElectionDate', 'District', 'Republican', 'Democratic', 'Libertarian', 'Green', 'Independent']
+    columns = ['EndDate', 'StartDate', 'ElectionDate', 'District', 'Republican', 'Democratic', 'Libertarian', 'Green',
+               'Independent']
 
     raw_house_polls: pd.DataFrame = scraper.get_raw_generic_ballot_data()
     for col in columns:
         assert col in raw_house_polls.columns
 
+    # Assert that every column is unique--no duplicated headers that could break things
+    assert raw_house_polls.columns.is_unique
 
-class TestAbstractScraper(TestCase):
 
-    def setUp(self) -> None:
-        self.scraper = self.scraper_type()
+@pytest.mark.parametrize('scraper_type', SCRAPERS)
+def test_compile_raw_house_data_to_timeseries(scraper_type):
+    pytest.fail()
 
-    def test_get_raw_house_data(self):
-        self.fail()
 
-    def test_get_raw_generic_ballot_data(self):
-        self.fail()
+@pytest.mark.parametrize('scraper_type', SCRAPERS)
+def test_compile_raw_generic_ballot_data_to_timeseries(scraper_type):
+    pytest.fail()
 
-    def test_compile_raw_house_data_to_timeseries(self):
-        self.fail()
 
-    def test_compile_raw_generic_ballot_data_to_timeseries(self):
-        self.fail()
+@pytest.mark.parametrize('scraper_type', SCRAPERS)
+def test_compile_raw_polls_to_timeseries_with_state_date(scraper_type):
+    pytest.fail()
+    # TODO: assert only polls after start_date appear
 
-    def test_compile_raw_polls_to_timeseries(self):
-        self.fail()
-        # TODO: Test start_date=None
-        # TODO: assert only polls after start_date appear
+
+@pytest.mark.parametrize('scraper_type', SCRAPERS)
+def test_compile_raw_polls_to_timeseries_without_state_date(scraper_type):
+    pytest.fail()
+    # TODO: Test start_date=None

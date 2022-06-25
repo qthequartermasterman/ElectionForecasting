@@ -34,7 +34,6 @@ class FiveThirtyEightScraper(AbstractScraper):
         poll_csv[end_date_col] = poll_csv['end_date'].apply(str_to_date)
         poll_csv[election_date_col] = poll_csv['election_date'].apply(str_to_date)
         poll_csv = poll_csv.rename(columns={'start_date': start_date_col,
-                                            'end_date':end_date_col,
                                             'pct': percent_col})
         return poll_csv
 
@@ -55,7 +54,6 @@ class FiveThirtyEightScraper(AbstractScraper):
                                             'dem': 'Democratic',
                                             'ind': 'Independent',
                                             'start_date': start_date_col,
-                                            'end_date':end_date_col,
                                             'pct': percent_col
                                             })
         poll_csv[percent_col] = poll_csv['Republican']
