@@ -6,7 +6,7 @@ import pandas as pd
 from rcp import get_polls, get_poll_data
 from ElectionForecasting.data_collection.DataCollectionUtils import str_to_date
 
-from ElectionForecasting.data_collection.polling.scrapers.AbstractScraper import AbstractScraper
+from ..AbstractScraper import AbstractScraper
 
 generic_ballot_url = 'https://www.realclearpolitics.com/epolls/other/2022-generic-congressional-vote-7361.html'
 
