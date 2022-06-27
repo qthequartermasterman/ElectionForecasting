@@ -1,7 +1,8 @@
 from numpy import nan
 import datetime
+import pandas as pd
 
-raw_generic_df = {'pollster_id': {79235: 399,
+raw_generic_df = pd.DataFrame.from_dict({'pollster_id': {79235: 399,
                                   79234: 294,
                                   79223: 1701,
                                   79200: 568,
@@ -14627,4 +14628,4 @@ raw_generic_df = {'pollster_id': {79235: 399,
                             74469: 0,
                             74400: 0,
                             73755: 0,
-                            73339: 0}}
+                            73339: 0}})

@@ -9,7 +9,7 @@ except ImportError:
     import urls
 
 from ElectionForecasting.data_collection.DataCollectionUtils import cache_download_csv_to_file, str_to_date
-from ElectionForecasting.data_collection.scrapers.AbstractScraper import AbstractScraper
+from ElectionForecasting.data_collection.polling.scrapers.AbstractScraper import AbstractScraper
 
 REFRESH_RATE = 0  # 12  # Refresh this every 12 hr
 

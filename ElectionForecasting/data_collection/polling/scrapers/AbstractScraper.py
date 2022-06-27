@@ -5,7 +5,7 @@ from typing import Optional
 
 import pandas as pd
 
-from ElectionForecasting.data_collection.scrapers.ABCRegistry import ABCRegistry
+from ElectionForecasting.data_collection.polling.scrapers.ABCRegistry import ABCRegistry
 
 
 class AbstractScraper(metaclass=ABCRegistry):
@@ -18,8 +18,8 @@ class AbstractScraper(metaclass=ABCRegistry):
     party_col = 'Party'
     district_col = 'District'
     percent_col = 'Percent'
-    population_col='PopulationType'
-    sample_size_col='SampleSize'
+    population_col = 'PopulationType'
+    sample_size_col = 'SampleSize'
 
     @staticmethod
     @abstractmethod
@@ -105,5 +105,3 @@ class AbstractScraper(metaclass=ABCRegistry):
         compiled_df = compiled_df.sort_index()
         compiled_df = compiled_df.sort_index(axis=1, ascending=True)
         return compiled_df
-
-

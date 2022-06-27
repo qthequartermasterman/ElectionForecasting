@@ -3,9 +3,9 @@ from unittest import TestCase
 
 import pandas as pd
 
-from ElectionForecasting.data_collection.scrapers.AbstractScraper import AbstractScraper
-from ElectionForecasting.data_collection.scrapers.fivethirtyeight.scraper import FiveThirtyEightScraper
-from ElectionForecasting.data_collection.scrapers.realclearpolitics.realclearpolitics import RealClearPoliticsScraper
+from ElectionForecasting.data_collection.polling.scrapers.AbstractScraper import AbstractScraper
+from ElectionForecasting.data_collection.polling.scrapers.fivethirtyeight.scraper import FiveThirtyEightScraper
+from ElectionForecasting.data_collection.polling.scrapers.realclearpolitics.realclearpolitics import RealClearPoliticsScraper
 from ElectionForecasting.data_collection.DataCollectionUtils import str_to_date
 
 from .raw_generic_dataframe import raw_generic_df
