@@ -41,4 +41,4 @@ def test_compile_raw_polls_to_timeseries_without_start_date():
                                                            election_date=datetime.date(2022, 11, 8),
                                                            starting_date=None)
     assert any(col < start_date for col in compiled_df.columns if isinstance(col, datetime.date))
-    # TODO: Test start_date=None
+
