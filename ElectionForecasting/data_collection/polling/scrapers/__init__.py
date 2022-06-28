@@ -1,3 +1,5 @@
+from typing import List
+
 from .fivethirtyeight.scraper import FiveThirtyEightScraper
 from .realclearpolitics.realclearpolitics import RealClearPoliticsScraper
 from .AbstractScraper import AbstractScraper
@@ -6,4 +8,4 @@ from .AbstractScraper import AbstractScraper
 # We do this by getting every registered subclass of AbstractScraper and putting them in a list.
 # We make sure to ignore AbstractScraper itself, since it cannot be instantiated.
 
-SCRAPERS = [c for c in AbstractScraper.get_registry().values() if c._registry_name != AbstractScraper._registry_name]
+SCRAPERS:List[AbstractScraper] = [c for c in AbstractScraper.get_registry().values() if c._registry_name != AbstractScraper._registry_name]

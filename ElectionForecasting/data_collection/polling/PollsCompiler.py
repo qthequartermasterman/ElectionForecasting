@@ -1,11 +1,49 @@
 import pandas as pd
 from typing import Optional
 from datetime import date
+
 from .scrapers import SCRAPERS, AbstractScraper
 from collections import defaultdict
 
+STARTING_DATE = date(2022, 3, 13)
+ELECTION_DATE = date(2022, 11, 8)
+
 
 class PollsCompiler:
+    """Interface to take raw polls and compile them into usable Timeseries DataFrames."""
+
+    def obtain_house_poll_timeseries(self, party: str = 'Republican', election_date=ELECTION_DATE,
+                                     starting_date=STARTING_DATE) -> pd.DataFrame:
+        """
+        Obtain a `pd.DataFrame` with each row representing polling averages for each house district. Columns represent
+        dates between the first poll and the election.
+        :param starting_date: first date to start recording polls (all polls before this date are discarded)
+        :param party: standard party name for the party we want timeseries data for
+        :param election_date: `datetime.date` object representing the date of the election
+        :return: `pd.DataFrame` with a timeseries row for each house district
+        """
+        combined_raw_polls = pd.concat([scraper.get_raw_house_data() for scraper in SCRAPERS])
+        return self.compile_raw_house_data_to_timeseries(combined_raw_polls,
+                                                         party=party,
+                                                         election_date=election_date,
+                                                         starting_date=starting_date)
+
+    def obtain_generic_house_poll_timeseries(self, party: str = 'Republican', election_date=ELECTION_DATE,
+                                             starting_date=STARTING_DATE) -> pd.DataFrame:
+        """
+        Obtain a `pd.DataFrame` with each row representing polling averages for each house district. Columns represent
+        dates between the first poll and the election.
+        :param starting_date: first date to start recording polls (all polls before this date are discarded)
+        :param party: standard party name for the party we want timeseries data for
+        :param election_date: `datetime.date` object representing the date of the election
+        :return: `pd.DataFrame` with a timeseries row for each house district
+        """
+        combined_raw_polls = pd.concat([scraper.get_raw_house_data() for scraper in SCRAPERS])
+        return self.compile_raw_generic_ballot_data_to_timeseries(combined_raw_polls,
+                                                                  party=party,
+                                                                  election_date=election_date,
+                                                                  starting_date=starting_date)
+
     @classmethod
     def compile_raw_house_data_to_timeseries(cls, raw_poll_df: pd.DataFrame, party: str, election_date: date,
                                              starting_date: Optional[date] = None) -> pd.DataFrame:
@@ -39,6 +77,7 @@ class PollsCompiler:
             ):
                 # TODO: Logic about what to do if multiple polls for a district occur on the same date
                 # TODO: For now, just take the average
+                # TODO: estimate polling averages using correlated districts
 
                 if row[district_col] in compiled_df.index and row[end_date_col] in compiled_df.columns:
                     compiled_df.loc[row[district_col], row[end_date_col]] += row[percent_col]
