@@ -76,20 +76,6 @@ class FiveThirtyEightScraper(AbstractScraper):
         return cls.get_raw_generic_ballot_poll_data(url or urls.generic_ballot_polls)
 
     @classmethod
-    @cache_download_csv_to_file('../../data/fivethirtyeight/house_raw_poll_timeseries.csv', refresh_time=REFRESH_RATE)
-    def compile_raw_house_data_to_timeseries(cls, raw_poll_df: pd.DataFrame, party: str, election_date: date,
-                                             starting_date: Optional[date] = None) -> pd.DataFrame:
-        return AbstractScraper.compile_raw_house_data_to_timeseries(raw_poll_df, party, election_date, starting_date)
-
-    @classmethod
-    @cache_download_csv_to_file('../../data/fivethirtyeight/generic_ballot_raw_poll_timeseries.csv',
-                                refresh_time=REFRESH_RATE)
-    def compile_raw_generic_ballot_data_to_timeseries(cls, raw_poll_df: pd.DataFrame, party: str, election_date: date,
-                                                      starting_date: Optional[date] = None) -> pd.DataFrame:
-        return AbstractScraper.compile_raw_generic_ballot_data_to_timeseries(raw_poll_df, party, election_date,
-                                                                             starting_date)
-
-    @classmethod
     @cache_download_csv_to_file('../../data/fivethirtyeight/house_raw.csv', refresh_time=REFRESH_RATE)
     def get_raw_house_data(cls, url: Optional[str] = None) -> pd.DataFrame:
         return cls.get_raw_poll_data(url or urls.house_polls)
