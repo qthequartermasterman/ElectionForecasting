@@ -9,12 +9,13 @@ from ..DataCollectionUtils import cache_download_csv_to_file
 
 STARTING_DATE = date(2022, 3, 13)
 ELECTION_DATE = date(2022, 11, 8)
+REFRESH_TIME =0
 
 
 class PollsCompiler:
     """Interface to take raw polls and compile them into usable Timeseries DataFrames."""
 
-    @cache_download_csv_to_file('../../data/compiled_polls/house_polls_timeseries.csv')
+    @cache_download_csv_to_file('../../data/compiled_polls/house_polls_timeseries.csv', refresh_time=REFRESH_TIME)
     def obtain_house_poll_timeseries(self, party: str = 'Republican', election_date=ELECTION_DATE,
                                      starting_date=STARTING_DATE) -> pd.DataFrame:
         """
@@ -31,7 +32,7 @@ class PollsCompiler:
                                                          election_date=election_date,
                                                          starting_date=starting_date)
 
-    @cache_download_csv_to_file('../../data/compiled_polls/generic_house_polls_timeseries.csv')
+    @cache_download_csv_to_file('../../data/compiled_polls/generic_house_polls_timeseries.csv', refresh_time=REFRESH_TIME)
     def obtain_generic_house_poll_timeseries(self, party: str = 'Republican', election_date=ELECTION_DATE,
                                              starting_date=STARTING_DATE) -> pd.DataFrame:
         """
@@ -42,7 +43,7 @@ class PollsCompiler:
         :param election_date: `datetime.date` object representing the date of the election
         :return: `pd.DataFrame` with a timeseries row for each house district
         """
-        combined_raw_polls = pd.concat([scraper.get_raw_house_data() for scraper in SCRAPERS])
+        combined_raw_polls = pd.concat([scraper.get_raw_generic_ballot_data() for scraper in SCRAPERS])
         return self.compile_raw_generic_ballot_data_to_timeseries(combined_raw_polls,
                                                                   party=party,
                                                                   election_date=election_date,
@@ -92,5 +93,5 @@ class PollsCompiler:
         for (district, date), count in district_date_counts.items():
             compiled_df.loc[district, date] /= count
         compiled_df = compiled_df.sort_index()
-        compiled_df = compiled_df.sort_index(axis=1, ascending=True)
+        compiled_df = compiled_df.sort_index(axis=1, ascending=True)/100
         return compiled_df
