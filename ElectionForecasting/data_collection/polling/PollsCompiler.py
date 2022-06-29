@@ -9,13 +9,13 @@ from ..DataCollectionUtils import cache_download_csv_to_file
 
 STARTING_DATE = date(2022, 3, 13)
 ELECTION_DATE = date(2022, 11, 8)
-REFRESH_TIME =0
+REFRESH_TIME = 1
 
 
 class PollsCompiler:
     """Interface to take raw polls and compile them into usable Timeseries DataFrames."""
 
-    @cache_download_csv_to_file('../../data/compiled_polls/house_polls_timeseries.csv', refresh_time=REFRESH_TIME)
+    #@cache_download_csv_to_file('../../data/compiled_polls/house_polls_timeseries.csv', refresh_time=REFRESH_TIME)
     def obtain_house_poll_timeseries(self, party: str = 'Republican', election_date=ELECTION_DATE,
                                      starting_date=STARTING_DATE) -> pd.DataFrame:
         """
@@ -32,7 +32,7 @@ class PollsCompiler:
                                                          election_date=election_date,
                                                          starting_date=starting_date)
 
-    @cache_download_csv_to_file('../../data/compiled_polls/generic_house_polls_timeseries.csv', refresh_time=REFRESH_TIME)
+    #@cache_download_csv_to_file('../../data/compiled_polls/generic_house_polls_timeseries.csv', refresh_time=REFRESH_TIME)
     def obtain_generic_house_poll_timeseries(self, party: str = 'Republican', election_date=ELECTION_DATE,
                                              starting_date=STARTING_DATE) -> pd.DataFrame:
         """
