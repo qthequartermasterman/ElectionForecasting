@@ -1,1 +1,5 @@
-realclearpolitics @ git+https://github.com/qthequartermasterman/rcp.git
+realclearpolitics@git+https://github.com/qthequartermasterman/rcp.git
+pymc3
+pandas
+numpy
+requests

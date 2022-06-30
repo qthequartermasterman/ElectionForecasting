@@ -6,5 +6,5 @@ setup(name='Election Forecasting',
       author='Andrew Sansom',
       author_email='andrew@euleriancircuit.com',
       url='https://www.euleriancircuit.com/',
-      # packages=[],
+      packages=['data_collection', 'models'],
      )
