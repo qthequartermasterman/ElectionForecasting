@@ -11,9 +11,13 @@ from ElectionForecasting.data_collection.models.poll_forecasting import (generat
 from ElectionForecasting.data_collection.cookpvi.CookPviScraper import cook_pvi_data
 
 
-def daterange(date1, date2):
-    for n in range(int((date2 - date1).days) + 1):
-        yield date1 + timedelta(n)
+def daterange(date1, date2, step=timedelta(1)):
+    # for n in range(int((date2 - date1).days) + 1):
+    #     yield date1 + timedelta(n)
+    r = date1
+    while r < date2:
+        yield r
+        r += step
 
 
 STARTING_DATE = date(2022, 6, 1)
