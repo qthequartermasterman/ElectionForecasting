@@ -99,9 +99,5 @@ class PollsCompiler:
 
     @classmethod
     def estimate_district_polls_from_generic_ballot(cls, generic_ballot):
-        generic_ballot = generic_ballot.iloc[0]  # Get the only row of the generic ballot polls
-        pvi = cook_pvi_data['New PVI Raw']
-        pvi = pd.DataFrame(pvi)
-
-
-        (rows.T+col).T
+        pvi = cook_pvi_data[['New PVI Raw']]/100
+        return pd.DataFrame(pvi.values+generic_ballot.values, columns=generic_ballot.columns, index=pvi.index)

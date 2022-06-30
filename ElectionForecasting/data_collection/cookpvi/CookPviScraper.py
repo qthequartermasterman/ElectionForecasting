@@ -68,4 +68,5 @@ single_district_states = cook_pvi_data['Name'].loc[~cook_pvi_data['Name'].str.co
 cook_pvi_data.loc[single_district_states, 'Name'] = cook_pvi_data.loc[single_district_states, 'Name'].astype(str) + '-01'
 cook_pvi_data['District'] = cook_pvi_data['Name'].replace(states, regex=True)
 cook_pvi_data = cook_pvi_data.set_index('District')
+# Standard in this library is Republican is positive; PVI standard is republican negative, so swap them
 cook_pvi_data['New PVI Raw'] = -cook_pvi_data['New PVI Raw']
