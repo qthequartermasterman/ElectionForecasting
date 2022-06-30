@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 
 import pandas as pd
 import pymc3 as pm
@@ -28,7 +28,7 @@ def logit(p: Union[float, np.ndarray]) -> np.ndarray:
 
 def generate_linzer_model(days: np.ndarray, state_polls: pd.DataFrame, national_polls: np.ndarray, gdp: float,
                           net_approval: float, incumbent: float, president_incumbent_party: str, tune: int = 3000,
-                          draws: int = 1000) -> tuple[pm.Model, InferenceData]:
+                          draws: int = 1000) -> Tuple[pm.Model, InferenceData]:
     """
 
     :param president_incumbent_party:
