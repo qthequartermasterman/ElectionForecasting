@@ -6,6 +6,7 @@ from .scrapers import SCRAPERS, AbstractScraper
 from collections import defaultdict
 
 from ..DataCollectionUtils import cache_download_csv_to_file
+from ..cookpvi.CookPviScraper import cook_pvi_data
 
 STARTING_DATE = date(2022, 3, 13)
 ELECTION_DATE = date(2022, 11, 8)
@@ -69,10 +70,11 @@ class PollsCompiler:
         party_col = AbstractScraper.party_col
         district_col = AbstractScraper.district_col
         percent_col = AbstractScraper.percent_col
+        sample_size_col = AbstractScraper.sample_size_col
 
         compiled_df: pd.DataFrame = pd.DataFrame()
         # Take each row, and put the poll results in the correct date column and district row
-        district_date_counts = defaultdict(lambda: 0)
+        district_date_counts = defaultdict(lambda: defaultdict(lambda:0))
         for index, row in raw_poll_df.iterrows():
             # print(row['election_date'], row['party'])
             if (
@@ -80,18 +82,26 @@ class PollsCompiler:
                     row[party_col] == party and
                     (not starting_date or (row[end_date_col] > starting_date))
             ):
-                # TODO: Logic about what to do if multiple polls for a district occur on the same date
-                # TODO: For now, just take the average
                 # TODO: estimate polling averages using correlated districts
+                # TODO: smooth out polling averages over consecutive days
+                district, end_date = row[district_col], row[end_date_col]
 
-                if row[district_col] in compiled_df.index and row[end_date_col] in compiled_df.columns:
-                    compiled_df.loc[row[district_col], row[end_date_col]] += row[percent_col]
-                else:
-                    compiled_df.loc[row[district_col], row[end_date_col]] = row[percent_col]
-                district_date_counts[(row[district_col], row[end_date_col])] += 1
+                district_date_counts[(district, end_date)]['party_count'] += row[percent_col]*row[sample_size_col]
+                district_date_counts[(district, end_date)]['total_count'] += row[sample_size_col]
+
+        for (district, end_date), count in district_date_counts.items():
+            compiled_df.loc[district, end_date] = district_date_counts[(district, end_date)]['party_count']/district_date_counts[(district, end_date)]['total_count']
+
         compiled_df = compiled_df.copy()  # Defragment the frame
-        for (district, date), count in district_date_counts.items():
-            compiled_df.loc[district, date] /= count
         compiled_df = compiled_df.sort_index()
         compiled_df = compiled_df.sort_index(axis=1, ascending=True)/100
         return compiled_df
+
+    @classmethod
+    def estimate_district_polls_from_generic_ballot(cls, generic_ballot):
+        generic_ballot = generic_ballot.iloc[0]  # Get the only row of the generic ballot polls
+        pvi = cook_pvi_data['New PVI Raw']
+        pvi = pd.DataFrame(pvi)
+
+
+        (rows.T+col).T
