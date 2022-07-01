@@ -5,9 +5,6 @@ import pytest
 
 from ElectionForecasting.data_collection.polling.PollsCompiler import PollsCompiler
 
-
-# TODO: Test with Democratic party
-
 def test_obtain_house_poll_timeseries():
     election_date = datetime.date(2022, 11, 8)
     start_date = datetime.date(2022, 3, 13)
