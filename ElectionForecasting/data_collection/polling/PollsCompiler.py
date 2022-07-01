@@ -111,6 +111,16 @@ class PollsCompiler:
         return compiled_df
 
     @classmethod
-    def estimate_district_polls_from_generic_ballot(cls, generic_ballot):
+    def estimate_district_polls_from_generic_ballot(cls, generic_timeseries: pd.DataFrame, party:str):
+        """
+        Estimate a district's polling average by adding its PVI to the generic timeseries.
+        :param generic_timeseries:
+        :param party:
+        :return:
+        """
+        if party not in ['Republican', 'Democratic']:
+            raise ValueError(f'Party {party} is not currently supported when estimating district polls from generic.')
         pvi = cook_pvi_data[['New PVI Raw']]/100
-        return pd.DataFrame(pvi.values+generic_ballot.values, columns=generic_ballot.columns, index=pvi.index)
+        if party == 'Democratic':  # We will add points to democratic districts and subtract from repulican
+            pvi = -pvi
+        return pd.DataFrame(pvi.values + generic_timeseries.values, columns=generic_timeseries.columns, index=pvi.index)
