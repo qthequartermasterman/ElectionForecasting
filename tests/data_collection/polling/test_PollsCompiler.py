@@ -15,6 +15,9 @@ def test_obtain_house_poll_timeseries():
     rep_timeseries = compiler.obtain_house_poll_timeseries(party='Republican', election_date=election_date,
                                                            starting_date=start_date)
     assert len(rep_timeseries)  # Make sure it's not empty
+    dem_timeseries = compiler.obtain_house_poll_timeseries(party='Democratic', election_date=election_date,
+                                                           starting_date=start_date)
+    assert len(dem_timeseries)  # Make sure it's not empty
 
 
 def test_compile_raw_generic_ballot_data_to_timeseries():
@@ -24,6 +27,9 @@ def test_compile_raw_generic_ballot_data_to_timeseries():
     rep_timeseries = compiler.obtain_generic_house_poll_timeseries(party='Republican', election_date=election_date,
                                                                    starting_date=start_date)
     assert len(rep_timeseries)  # Make sure it's not empty
+    dem_timeseries = compiler.obtain_generic_house_poll_timeseries(party='Democratic', election_date=election_date,
+                                                                   starting_date=start_date)
+    assert len(dem_timeseries)  # Make sure it's not empty
 
 
 def test_compile_raw_polls_to_timeseries_with_start_date():
