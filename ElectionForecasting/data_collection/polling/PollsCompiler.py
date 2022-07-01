@@ -121,6 +121,6 @@ class PollsCompiler:
         if party not in ['Republican', 'Democratic']:
             raise ValueError(f'Party {party} is not currently supported when estimating district polls from generic.')
         pvi = cook_pvi_data[['New PVI Raw']]/100
-        if party == 'Democratic':  # We will add points to democratic districts and subtract from repulican
+        if party == 'Democratic':  # We will add points to democratic districts and subtract from republican
             pvi = -pvi
         return pd.DataFrame(pvi.values + generic_timeseries.values, columns=generic_timeseries.columns, index=pvi.index)
