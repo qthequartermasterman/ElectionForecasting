@@ -6,20 +6,24 @@ import pytest
 from ElectionForecasting.data_collection.polling.PollsCompiler import PollsCompiler
 
 
+# TODO: Test with Democratic party
+
 def test_obtain_house_poll_timeseries():
     election_date = datetime.date(2022, 11, 8)
     start_date = datetime.date(2022, 3, 13)
     compiler = PollsCompiler()
-    compiler.obtain_house_poll_timeseries(party='Republican', election_date=election_date,
-                                          starting_date=start_date)
+    rep_timeseries = compiler.obtain_house_poll_timeseries(party='Republican', election_date=election_date,
+                                                           starting_date=start_date)
+    assert len(rep_timeseries)  # Make sure it's not empty
 
 
 def test_compile_raw_generic_ballot_data_to_timeseries():
     election_date = datetime.date(2022, 11, 8)
     start_date = datetime.date(2022, 3, 13)
     compiler = PollsCompiler()
-    compiler.obtain_generic_house_poll_timeseries(party='Republican', election_date=election_date,
-                                                  starting_date=start_date)
+    rep_timeseries = compiler.obtain_generic_house_poll_timeseries(party='Republican', election_date=election_date,
+                                                                   starting_date=start_date)
+    assert len(rep_timeseries)  # Make sure it's not empty
 
 
 def test_compile_raw_polls_to_timeseries_with_start_date():
@@ -41,4 +45,3 @@ def test_compile_raw_polls_to_timeseries_without_start_date():
                                                            election_date=datetime.date(2022, 11, 8),
                                                            starting_date=None)
     assert any(col < start_date for col in compiled_df.columns if isinstance(col, datetime.date))
-
