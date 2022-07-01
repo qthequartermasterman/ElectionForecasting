@@ -11,6 +11,8 @@ from ..AbstractScraper import AbstractScraper
 generic_ballot_url = 'https://www.realclearpolitics.com/epolls/other/2022-generic-congressional-vote-7361.html'
 
 ELECTION_DATE = str_to_date('11/8/22')
+CURRENT_YEAR_IN_POLL_ITERATION = datetime.now().year - 2000
+CURRENT_MONTH_IN_POLL_ITERATION = datetime.now().month
 
 
 # polls = get_polls(candidate="Biden")[0]
@@ -18,8 +20,20 @@ ELECTION_DATE = str_to_date('11/8/22')
 
 def split_date(date_interval_string: str) -> (datetime, datetime):
     start, end = date_interval_string.split(' - ')
-    start, end = start + '/22', end + '/22'
+
+    # Since RCP scraping doesn't give us the year, we have to infer it
+    # Keep track of the current year and month. If we go from a month less than 12 to 12,
+    # then we know that we've gone back to the previous year.
+    # Entries are **roughly** monotonic decreasing, but that order isn't guaranteed.
+    # This would fail if we get a poll that ended in the new year before one that ended in december
+    # But that should be sufficiently rare that it shouldn't be a problem
+    global CURRENT_MONTH_IN_POLL_ITERATION, CURRENT_YEAR_IN_POLL_ITERATION
+    if CURRENT_MONTH_IN_POLL_ITERATION < 12 and end[:2] == '12':
+        CURRENT_YEAR_IN_POLL_ITERATION -= 1
+
+    start, end = start + f'/{CURRENT_YEAR_IN_POLL_ITERATION}', end + f'/{CURRENT_YEAR_IN_POLL_ITERATION}'
     start, end = str_to_date(start), str_to_date(end)
+    CURRENT_MONTH_IN_POLL_ITERATION = end.month
     return pd.Series([start, end])
 
 
@@ -33,7 +47,6 @@ def split_sample_type(sample_size_type: str):
     return pd.Series([int(sample_size), sample_type])
 
 
-
 class RealClearPoliticsScraper(AbstractScraper):
     _registry_name = 'realclearpolitics'
 
@@ -45,6 +58,16 @@ class RealClearPoliticsScraper(AbstractScraper):
                                                                       'Republicans (R)': 'Republican',
                                                                       'Democrats (D)': 'Democratic',
                                                                       })
+
+        # Since RCP scraping doesn't give us the year, we have to infer it
+        # Keep track of the current year and month. If we go from a month less than 12 to 12,
+        # then we know that we've gone back to the previous year.
+        # Entries are **roughly** monotonic decreasing, but that order isn't guaranteed.
+        global CURRENT_MONTH_IN_POLL_ITERATION, CURRENT_YEAR_IN_POLL_ITERATION
+        CURRENT_YEAR_IN_POLL_ITERATION = datetime.now().year - 2000
+        CURRENT_MONTH_IN_POLL_ITERATION = datetime.now().month
+
+
         raw['District'] = 'Generic Ballot'
         raw[['StartDate', 'EndDate']] = raw['Date'].apply(split_date)
         raw[[AbstractScraper.sample_size_col, AbstractScraper.population_col]] = raw['Sample'].apply(split_sample_type)
