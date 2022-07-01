@@ -58,7 +58,20 @@ class PollsCompiler:
     @classmethod
     def compile_raw_generic_ballot_data_to_timeseries(cls, raw_poll_df: pd.DataFrame, party: str, election_date: date,
                                                       starting_date: Optional[date] = None) -> pd.DataFrame:
+        if party not in raw_poll_df.columns:
+            raise ValueError(f'Party {party} not present in supplied raw polling dataframe')
+
+        party_col = AbstractScraper.party_col
+        percent_col = AbstractScraper.percent_col
+
+        # If we put our desired party and percentage into the party and percent columns, we can re-use our previous
+        # compile function
+        raw_poll_df = raw_poll_df.copy()
+        raw_poll_df[party_col] = party
+        raw_poll_df[percent_col] = raw_poll_df[party].astype(float)
+
         return cls.compile_raw_polls_to_timeseries(raw_poll_df, party, election_date, starting_date)
+
 
     @staticmethod
     def compile_raw_polls_to_timeseries(raw_poll_df: pd.DataFrame, party: str, election_date: date,
