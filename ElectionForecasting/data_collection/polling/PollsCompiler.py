@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import Optional
+from typing import Optional, Dict
 from datetime import date
 
 from .scrapers import SCRAPERS, AbstractScraper
@@ -7,6 +7,7 @@ from collections import defaultdict
 
 from ..DataCollectionUtils import cache_download_csv_to_file
 from ..cookpvi.CookPviScraper import cook_pvi_data
+from ..districts.DistrictSimilarity import DistrictSimilarity
 
 STARTING_DATE = date(2022, 3, 13)
 ELECTION_DATE = date(2022, 11, 8)
@@ -15,6 +16,8 @@ REFRESH_TIME = 1
 
 class PollsCompiler:
     """Interface to take raw polls and compile them into usable Timeseries DataFrames."""
+    district_similarity = DistrictSimilarity()
+
 
     #@cache_download_csv_to_file('../../data/compiled_polls/house_polls_timeseries.csv', refresh_time=REFRESH_TIME)
     def obtain_house_poll_timeseries(self, party: str = 'Republican', election_date=ELECTION_DATE,
@@ -111,7 +114,7 @@ class PollsCompiler:
         return compiled_df
 
     @classmethod
-    def estimate_district_polls_from_generic_ballot(cls, generic_timeseries: pd.DataFrame, party:str):
+    def estimate_district_polls_from_generic_ballot(cls, generic_timeseries: pd.DataFrame, party:str) -> pd.DataFrame:
         """
         Estimate a district's polling average by adding its PVI to the generic timeseries.
         :param generic_timeseries:
@@ -124,3 +127,23 @@ class PollsCompiler:
         if party == 'Democratic':  # We will add points to democratic districts and subtract from republican
             pvi = -pvi
         return pd.DataFrame(pvi.values + generic_timeseries.values, columns=generic_timeseries.columns, index=pvi.index)
+
+    @classmethod
+    def average_correlated_district_polls(cls, district_timeseries: pd.DataFrame) -> pd.DataFrame:
+        """
+        Transform each row (district timeseries) into a weighted average of similar districts, to show
+        correlated effects.
+
+        If two districts are similar, then they will likely vote similarly on election day, even if polls don't show
+        that clearly.
+
+        :param district_timeseries: pd.DataFrame with each row being a district timeseries
+        :return:
+        """
+        correlated_timeseries = district_timeseries.copy()
+        for index, row in district_timeseries.iterrows():
+            similar_districts: Dict[str, float] = cls.district_similarity.get_similar_districts(str(index))
+            similar_district_df = correlated_timeseries.loc[list(similar_districts.keys())]
+            correlated_timeseries.loc[index] = similar_district_df.mean()
+
+        return correlated_timeseries
