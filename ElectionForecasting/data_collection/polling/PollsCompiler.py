@@ -163,10 +163,15 @@ class PollsCompiler:
         :param sigma: standard deviation of the normal distribution generating the brownian walks
         :return:
         """
-        t = np.linspace(0, 1, num)
+        # Generate the unconstrained brownian walks
         z = np.random.normal(mu, sigma, size=(trials, num))
-        t = np.broadcast_to(t, z.shape)
         z[:, 0] = 0
         z = z.cumsum(axis=1)
+
+        # Transform those brownian walks so they become standard brownian bridges (i.e. begin and end at 0)
+        t = np.linspace(0, 1, num)
+        t = np.broadcast_to(t, z.shape)
         x = z - t * np.broadcast_to(z[:, -1], t.T.shape).T
+
+        # Transform the standard brownian bridges so they begin and end at a and b respectively
         return (1 - t) * a + t * b + x
