@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from typing import Optional, Dict
 from datetime import date
@@ -18,8 +19,7 @@ class PollsCompiler:
     """Interface to take raw polls and compile them into usable Timeseries DataFrames."""
     district_similarity = DistrictSimilarity()
 
-
-    #@cache_download_csv_to_file('../../data/compiled_polls/house_polls_timeseries.csv', refresh_time=REFRESH_TIME)
+    # @cache_download_csv_to_file('../../data/compiled_polls/house_polls_timeseries.csv', refresh_time=REFRESH_TIME)
     def obtain_house_poll_timeseries(self, party: str = 'Republican', election_date=ELECTION_DATE,
                                      starting_date=STARTING_DATE) -> pd.DataFrame:
         """
@@ -36,7 +36,7 @@ class PollsCompiler:
                                                          election_date=election_date,
                                                          starting_date=starting_date)
 
-    #@cache_download_csv_to_file('../../data/compiled_polls/generic_house_polls_timeseries.csv', refresh_time=REFRESH_TIME)
+    # @cache_download_csv_to_file('../../data/compiled_polls/generic_house_polls_timeseries.csv', refresh_time=REFRESH_TIME)
     def obtain_generic_house_poll_timeseries(self, party: str = 'Republican', election_date=ELECTION_DATE,
                                              starting_date=STARTING_DATE) -> pd.DataFrame:
         """
@@ -75,7 +75,6 @@ class PollsCompiler:
 
         return cls.compile_raw_polls_to_timeseries(raw_poll_df, party, election_date, starting_date)
 
-
     @staticmethod
     def compile_raw_polls_to_timeseries(raw_poll_df: pd.DataFrame, party: str, election_date: date,
                                         starting_date: Optional[date] = None) -> pd.DataFrame:
@@ -90,7 +89,7 @@ class PollsCompiler:
 
         compiled_df: pd.DataFrame = pd.DataFrame()
         # Take each row, and put the poll results in the correct date column and district row
-        district_date_counts = defaultdict(lambda: defaultdict(lambda:0))
+        district_date_counts = defaultdict(lambda: defaultdict(lambda: 0))
         for index, row in raw_poll_df.iterrows():
             # print(row['election_date'], row['party'])
             if (
@@ -102,19 +101,20 @@ class PollsCompiler:
                 # TODO: smooth out polling averages over consecutive days
                 district, end_date = row[district_col], row[end_date_col]
 
-                district_date_counts[(district, end_date)]['party_count'] += row[percent_col]*row[sample_size_col]
+                district_date_counts[(district, end_date)]['party_count'] += row[percent_col] * row[sample_size_col]
                 district_date_counts[(district, end_date)]['total_count'] += row[sample_size_col]
 
         for (district, end_date), count in district_date_counts.items():
-            compiled_df.loc[district, end_date] = district_date_counts[(district, end_date)]['party_count']/district_date_counts[(district, end_date)]['total_count']
+            compiled_df.loc[district, end_date] = district_date_counts[(district, end_date)]['party_count'] / \
+                                                  district_date_counts[(district, end_date)]['total_count']
 
         compiled_df = compiled_df.copy()  # Defragment the frame
         compiled_df = compiled_df.sort_index()
-        compiled_df = compiled_df.sort_index(axis=1, ascending=True)/100
+        compiled_df = compiled_df.sort_index(axis=1, ascending=True) / 100
         return compiled_df
 
     @classmethod
-    def estimate_district_polls_from_generic_ballot(cls, generic_timeseries: pd.DataFrame, party:str) -> pd.DataFrame:
+    def estimate_district_polls_from_generic_ballot(cls, generic_timeseries: pd.DataFrame, party: str) -> pd.DataFrame:
         """
         Estimate a district's polling average by adding its PVI to the generic timeseries.
         :param generic_timeseries:
@@ -123,7 +123,7 @@ class PollsCompiler:
         """
         if party not in ['Republican', 'Democratic']:
             raise ValueError(f'Party {party} is not currently supported when estimating district polls from generic.')
-        pvi = cook_pvi_data[['New PVI Raw']]/100
+        pvi = cook_pvi_data[['New PVI Raw']] / 100
         if party == 'Democratic':  # We will add points to democratic districts and subtract from republican
             pvi = -pvi
         return pd.DataFrame(pvi.values + generic_timeseries.values, columns=generic_timeseries.columns, index=pvi.index)
@@ -147,3 +147,13 @@ class PollsCompiler:
             correlated_timeseries.loc[index] = similar_district_df.mean()
 
         return correlated_timeseries
+
+    @classmethod
+    def brownian_bridge(cls, n, a, b, trials=100, mu=0, sigma=1):
+        t = np.linspace(0, 1, n)
+        z = np.random.normal(mu, sigma, size=(trials, n))
+        t = np.broadcast_to(t, z.shape)
+        z[:, 0] = 0
+        z = z.cumsum(axis=1)
+        x = z - t * np.broadcast_to(z[:, -1], t.T.shape).T
+        return (1-t)*a + t*b + x
