@@ -173,5 +173,5 @@ class PollsCompiler:
         t = np.broadcast_to(t, z.shape)
         x = z - t * np.broadcast_to(z[:, -1], t.T.shape).T
 
-        # Transform the standard brownian bridges so they begin and end at a and b respectively
+        # Transform the standard brownian bridges, so they begin and end at a and b respectively
         return (1 - t) * a + t * b + x
