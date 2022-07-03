@@ -148,12 +148,25 @@ class PollsCompiler:
 
         return correlated_timeseries
 
-    @classmethod
-    def brownian_bridge(cls, n, a, b, trials=100, mu=0, sigma=1):
-        t = np.linspace(0, 1, n)
-        z = np.random.normal(mu, sigma, size=(trials, n))
+    @staticmethod
+    def brownian_bridge(num: int, a: float, b: float, trials: int = 100, mu: float = 0, sigma: float = 1):
+        """
+        Generate a numpy array with shape (trials, num) where each trial is a generalized brownian bridge between a and
+        b with length num. This means that each trial (of length num) is a brownian walk that begins with a and ends
+        with b.
+
+        :param num: length of each generalized brownian bridge
+        :param a: start point of each generalized brownian bridge
+        :param b: end point of each generalized brownian bridge
+        :param trials: number of generalized brownian bridges
+        :param mu: mean of the normal distribution generating the brownian walks
+        :param sigma: standard deviation of the normal distribution generating the brownian walks
+        :return:
+        """
+        t = np.linspace(0, 1, num)
+        z = np.random.normal(mu, sigma, size=(trials, num))
         t = np.broadcast_to(t, z.shape)
         z[:, 0] = 0
         z = z.cumsum(axis=1)
         x = z - t * np.broadcast_to(z[:, -1], t.T.shape).T
-        return (1-t)*a + t*b + x
+        return (1 - t) * a + t * b + x
