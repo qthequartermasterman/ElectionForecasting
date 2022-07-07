@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from functools import wraps
 import pandas as pd
 import os
@@ -43,3 +43,12 @@ def str_to_date(date_str: str) -> date:
     m, d, y = int(m), int(d), 2000 + int(y)
     # print(m, d, y)
     return date(y, m, d)
+
+
+def daterange(date1, date2, step: timedelta = timedelta(1)):
+    # for n in range(int((date2 - date1).days) + 1):
+    #     yield date1 + timedelta(n)
+    r = date1
+    while r < date2:
+        yield r
+        r += step

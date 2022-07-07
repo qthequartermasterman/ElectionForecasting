@@ -1,12 +1,12 @@
 import numpy as np
 import pandas as pd
-from typing import Optional, Dict
-from datetime import date
+from typing import Optional, Dict, List
+from datetime import date, timedelta
 
 from .scrapers import SCRAPERS, AbstractScraper
 from collections import defaultdict
 
-from ..DataCollectionUtils import cache_download_csv_to_file
+from ..DataCollectionUtils import cache_download_csv_to_file, daterange
 from ..cookpvi.CookPviScraper import cook_pvi_data
 from ..districts.DistrictSimilarity import DistrictSimilarity
 
@@ -179,7 +179,7 @@ class PollsCompiler:
 
     @staticmethod
     def brownian_interpolation(x: np.ndarray, xp: np.ndarray, fp: np.ndarray, trials: int = 10, mu: float = 0,
-                               sigma: float = 1) -> np.ndarray:
+                               sigma: float = .01) -> np.ndarray:
         """
         Fill in any NaN values in arr by interpolating the values with brownian walks.
         :param x: The x-coordinates at which to evaluate the interpolated values.
@@ -193,7 +193,34 @@ class PollsCompiler:
         """
         interp = np.interp(x, xp, fp)
         random_walk = PollsCompiler.brownian_bridge(num=len(x), trials=trials, mu=mu, sigma=sigma, a=0, b=0)
-
+        # TODO: Add a random walk to the linear interpolation that fixes the walk to 0 at each of the values in xp
 
         # return interp+random_walk
         return interp
+
+    @staticmethod
+    def interpolate_district_polls(district_timeseries: pd.DataFrame) -> pd.DataFrame:
+        # Make sure the columns are in time order so our underlying numpy arrays satisfy the requirements of our
+        # numpy interpolation functions
+        district_timeseries = district_timeseries.sort_index(axis=1)
+
+        # We want to interpolate every day from the beginning to the end of the polling period
+        dates: List[date] = list(daterange(min(district_timeseries.columns),
+                                           max(district_timeseries.columns),
+                                           step=timedelta(1)
+                                           )
+                                 )
+        dates_int = np.array([d.toordinal() for d in dates])
+        dates_int_current_cols = np.array([d.toordinal() for d in district_timeseries.columns])
+
+        # Do the interpolation
+        polls_np = district_timeseries.to_numpy()
+        interpolated_polls = [PollsCompiler.brownian_interpolation(dates_int,
+                                                                   dates_int_current_cols,
+                                                                   fp)
+                              for fp in polls_np]
+        interpolated_polls_np = np.stack(interpolated_polls)
+        # Return this as a dataframe with the new dates as the columns and retaining the old indices
+        return pd.DataFrame(interpolated_polls_np, columns=dates, index=district_timeseries.index)
+
+
