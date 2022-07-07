@@ -25,6 +25,7 @@ class PollsCompiler:
         """
         Obtain a `pd.DataFrame` with each row representing polling averages for each house district. Columns represent
         dates between the first poll and the election.
+        :param window_days: number of days to include in windowing operations
         :param starting_date: first date to start recording polls (all polls before this date are discarded)
         :param party: standard party name for the party we want timeseries data for
         :param election_date: `datetime.date` object representing the date of the election
