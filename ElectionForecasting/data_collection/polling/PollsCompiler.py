@@ -199,7 +199,7 @@ class PollsCompiler:
         return interp
 
     @staticmethod
-    def interpolate_district_polls(district_timeseries: pd.DataFrame) -> pd.DataFrame:
+    def interpolate_district_polls(district_timeseries: pd.DataFrame, step=timedelta(1)) -> pd.DataFrame:
         # Make sure the columns are in time order so our underlying numpy arrays satisfy the requirements of our
         # numpy interpolation functions
         district_timeseries = district_timeseries.sort_index(axis=1)
@@ -207,7 +207,7 @@ class PollsCompiler:
         # We want to interpolate every day from the beginning to the end of the polling period
         dates: List[date] = list(daterange(min(district_timeseries.columns),
                                            max(district_timeseries.columns),
-                                           step=timedelta(1)
+                                           step=step
                                            )
                                  )
         dates_int = np.array([d.toordinal() for d in dates])
@@ -223,4 +223,6 @@ class PollsCompiler:
         # Return this as a dataframe with the new dates as the columns and retaining the old indices
         return pd.DataFrame(interpolated_polls_np, columns=dates, index=district_timeseries.index)
 
-
+    @staticmethod
+    def window_district_timeseries(district_timeseries: pd.DataFrame, window_days=7) -> pd.DataFrame:
+        return district_timeseries.T.rolling(window_days, min_periods=1, center=True).mean()[::window_days].T
