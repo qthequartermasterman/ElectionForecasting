@@ -45,15 +45,13 @@ class PollsCompiler:
             generic_timeseries=generic_timeseries, party=party)
         correlated_districts = self.average_correlated_district_polls(house_timeseries)
 
-        house_timeseries = self.interpolate_district_polls(house_timeseries, election_date=election_date)
-        estimated_polls_from_generic = self.interpolate_district_polls(estimated_polls_from_generic,
-                                                                       election_date=election_date)
-        correlated_districts = self.interpolate_district_polls(correlated_districts, election_date=election_date)
+        house_timeseries = self.interpolate_district_polls(house_timeseries, election_date)
+        estimated_polls_from_generic = self.interpolate_district_polls(estimated_polls_from_generic, election_date)
+        correlated_districts = self.interpolate_district_polls(correlated_districts, election_date)
 
-        house_timeseries = self.window_district_timeseries(house_timeseries, window_days=window_days)
-        estimated_polls_from_generic = self.window_district_timeseries(estimated_polls_from_generic,
-                                                                       window_days=window_days)
-        correlated_districts = self.window_district_timeseries(correlated_districts, window_days=window_days)
+        house_timeseries = self.window_district_timeseries(house_timeseries, window_days)
+        estimated_polls_from_generic = self.window_district_timeseries(estimated_polls_from_generic, window_days)
+        correlated_districts = self.window_district_timeseries(correlated_districts, window_days)
 
         # We want the cell-wise mean of those three dataframes, but pandas has no easy way to do this.
         # Instead, we concat the three df into one with MultiIndex, group by the top level index, and
