@@ -44,9 +44,10 @@ class PollsCompiler:
             generic_timeseries=generic_timeseries, party=party)
         correlated_districts = self.average_correlated_district_polls(house_timeseries)
 
-        house_timeseries = self.interpolate_district_polls(house_timeseries)
-        estimated_polls_from_generic = self.interpolate_district_polls(estimated_polls_from_generic)
-        correlated_districts = self.interpolate_district_polls(correlated_districts)
+        house_timeseries = self.interpolate_district_polls(house_timeseries, election_date=election_date)
+        estimated_polls_from_generic = self.interpolate_district_polls(estimated_polls_from_generic,
+                                                                       election_date=election_date)
+        correlated_districts = self.interpolate_district_polls(correlated_districts, election_date=election_date)
 
         house_timeseries = self.window_district_timeseries(house_timeseries, window_days=window_days)
         estimated_polls_from_generic = self.window_district_timeseries(estimated_polls_from_generic,
@@ -215,7 +216,7 @@ class PollsCompiler:
         :param mu: mean of the normal distribution generating the brownian walks
         :param sigma: standard deviation of the normal distribution generating the brownian walks
         """
-        interp = np.interp(x, xp, fp)
+        interp = np.interp(x, xp, fp, right=np.NaN)
         random_walk = PollsCompiler.brownian_bridge(num=len(x), trials=trials, mu=mu, sigma=sigma, a=0, b=0)
         random_walk = random_walk.mean(axis=0)
         # TODO: Add a random walk to the linear interpolation that fixes the walk to 0 at each of the values in xp
@@ -224,14 +225,14 @@ class PollsCompiler:
         #return interp
 
     @staticmethod
-    def interpolate_district_polls(district_timeseries: pd.DataFrame, step=timedelta(1)) -> pd.DataFrame:
+    def interpolate_district_polls(district_timeseries: pd.DataFrame, election_date:date, step=timedelta(1)) -> pd.DataFrame:
         # Make sure the columns are in time order so our underlying numpy arrays satisfy the requirements of our
         # numpy interpolation functions
         district_timeseries = district_timeseries.sort_index(axis=1)
 
         # We want to interpolate every day from the beginning to the end of the polling period
         dates: List[date] = list(daterange(min(district_timeseries.columns),
-                                           max(district_timeseries.columns),
+                                           election_date,
                                            step=step
                                            )
                                  )
@@ -251,4 +252,5 @@ class PollsCompiler:
     @staticmethod
     def window_district_timeseries(district_timeseries: pd.DataFrame, window_days=7) -> pd.DataFrame:
         district_timeseries = district_timeseries.sort_index(axis=1)
-        return district_timeseries.T.rolling(window_days, min_periods=1, center=True).mean()[::window_days].T
+        rolling = district_timeseries.T.rolling(window_days, min_periods=1, closed='both').mean()
+        return rolling[::-1][::window_days][::-1].T  # we want the step to end on the last day, not start on the first
