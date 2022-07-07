@@ -21,7 +21,7 @@ class PollsCompiler:
 
     # @cache_download_csv_to_file('../../data/compiled_polls/house_polls_timeseries.csv', refresh_time=REFRESH_TIME)
     def obtain_house_poll_timeseries(self, party: str = 'Republican', election_date=ELECTION_DATE,
-                                     starting_date=STARTING_DATE) -> pd.DataFrame:
+                                     starting_date=STARTING_DATE, window_days=7) -> pd.DataFrame:
         """
         Obtain a `pd.DataFrame` with each row representing polling averages for each house district. Columns represent
         dates between the first poll and the election.
@@ -31,10 +31,33 @@ class PollsCompiler:
         :return: `pd.DataFrame` with a timeseries row for each house district
         """
         combined_raw_polls = pd.concat([scraper.get_raw_house_data() for scraper in SCRAPERS])
-        return self.compile_raw_house_data_to_timeseries(combined_raw_polls,
-                                                         party=party,
-                                                         election_date=election_date,
-                                                         starting_date=starting_date)
+        house_timeseries = self.compile_raw_house_data_to_timeseries(combined_raw_polls,
+                                                                     party=party,
+                                                                     election_date=election_date,
+                                                                     starting_date=starting_date)
+
+        generic_timeseries = self.obtain_generic_house_poll_timeseries(party=party,
+                                                                       election_date=election_date,
+                                                                       starting_date=starting_date)
+
+        estimated_polls_from_generic = self.estimate_district_polls_from_generic_ballot(
+            generic_timeseries=generic_timeseries, party=party)
+        correlated_districts = self.average_correlated_district_polls(house_timeseries)
+
+        house_timeseries = self.interpolate_district_polls(house_timeseries)
+        estimated_polls_from_generic = self.interpolate_district_polls(estimated_polls_from_generic)
+        correlated_districts = self.interpolate_district_polls(correlated_districts)
+
+        house_timeseries = self.window_district_timeseries(house_timeseries, window_days=window_days)
+        estimated_polls_from_generic = self.window_district_timeseries(estimated_polls_from_generic,
+                                                                       window_days=window_days)
+        correlated_districts = self.window_district_timeseries(correlated_districts, window_days=window_days)
+
+        # We want the cell-wise mean of those three dataframes, but pandas has no easy way to do this.
+        # Instead, we concat the three df into one with MultiIndex, group by the top level index, and
+        # then mean-aggregate rows with the same index
+        concat = pd.concat([house_timeseries, estimated_polls_from_generic, correlated_districts]).groupby(level=0)
+        return concat.agg('mean')
 
     # @cache_download_csv_to_file('../../data/compiled_polls/generic_house_polls_timeseries.csv', refresh_time=REFRESH_TIME)
     def obtain_generic_house_poll_timeseries(self, party: str = 'Republican', election_date=ELECTION_DATE,
@@ -143,7 +166,8 @@ class PollsCompiler:
         correlated_timeseries = district_timeseries.copy()
         for index, row in district_timeseries.iterrows():
             similar_districts: Dict[str, float] = cls.district_similarity.get_similar_districts(str(index))
-            similar_district_df = correlated_timeseries.loc[list(similar_districts.keys())]
+            similar_district_df = correlated_timeseries.loc[
+                [key for key in similar_districts if key in district_timeseries.index]]
             correlated_timeseries.loc[index] = similar_district_df.mean()
 
         return correlated_timeseries
@@ -193,10 +217,11 @@ class PollsCompiler:
         """
         interp = np.interp(x, xp, fp)
         random_walk = PollsCompiler.brownian_bridge(num=len(x), trials=trials, mu=mu, sigma=sigma, a=0, b=0)
+        random_walk = random_walk.mean(axis=0)
         # TODO: Add a random walk to the linear interpolation that fixes the walk to 0 at each of the values in xp
 
-        # return interp+random_walk
-        return interp
+        return interp+random_walk
+        #return interp
 
     @staticmethod
     def interpolate_district_polls(district_timeseries: pd.DataFrame, step=timedelta(1)) -> pd.DataFrame:
@@ -225,4 +250,5 @@ class PollsCompiler:
 
     @staticmethod
     def window_district_timeseries(district_timeseries: pd.DataFrame, window_days=7) -> pd.DataFrame:
+        district_timeseries = district_timeseries.sort_index(axis=1)
         return district_timeseries.T.rolling(window_days, min_periods=1, center=True).mean()[::window_days].T
