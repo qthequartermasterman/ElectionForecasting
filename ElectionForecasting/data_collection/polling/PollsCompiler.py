@@ -149,7 +149,8 @@ class PollsCompiler:
         return correlated_timeseries
 
     @staticmethod
-    def brownian_bridge(num: int, a: float, b: float, trials: int = 100, mu: float = 0, sigma: float = 1):
+    def brownian_bridge(num: int, a: float = 0, b: float = 0, trials: int = 10, mu: float = 0,
+                        sigma: float = 1) -> np.ndarray:
         """
         Generate a numpy array with shape (trials, num) where each trial is a generalized brownian bridge between a and
         b with length num. This means that each trial (of length num) is a brownian walk that begins with a and ends
@@ -161,17 +162,38 @@ class PollsCompiler:
         :param trials: number of generalized brownian bridges
         :param mu: mean of the normal distribution generating the brownian walks
         :param sigma: standard deviation of the normal distribution generating the brownian walks
-        :return:
+        :return: numpy array of shape (trial, num) where each row is a generalized brownian walk
         """
         # Generate the unconstrained brownian walks
         z = np.random.normal(mu, sigma, size=(trials, num))
         z[:, 0] = 0
         z = z.cumsum(axis=1)
 
-        # Transform those brownian walks so they become standard brownian bridges (i.e. begin and end at 0)
+        # Transform those brownian walks, so they become standard brownian bridges (i.e. begin and end at 0)
         t = np.linspace(0, 1, num)
         t = np.broadcast_to(t, z.shape)
         x = z - t * np.broadcast_to(z[:, -1], t.T.shape).T
 
         # Transform the standard brownian bridges, so they begin and end at a and b respectively
         return (1 - t) * a + t * b + x
+
+    @staticmethod
+    def brownian_interpolation(x: np.ndarray, xp: np.ndarray, fp: np.ndarray, trials: int = 10, mu: float = 0,
+                               sigma: float = 1) -> np.ndarray:
+        """
+        Fill in any NaN values in arr by interpolating the values with brownian walks.
+        :param x: The x-coordinates at which to evaluate the interpolated values.
+        :param xp: 1-D sequence of floats. The x-coordinates of the data points, must be increasing if argument period
+            is not specified. Otherwise, xp is internally sorted after normalizing the periodic
+            boundaries with xp = xp % period.
+        :param fp: 1-D sequence of float or complex. The y-coordinates of the data points, same length as xp.
+        :param trials: number of generalized brownian bridges to average over
+        :param mu: mean of the normal distribution generating the brownian walks
+        :param sigma: standard deviation of the normal distribution generating the brownian walks
+        """
+        interp = np.interp(x, xp, fp)
+        random_walk = PollsCompiler.brownian_bridge(num=len(x), trials=trials, mu=mu, sigma=sigma, a=0, b=0)
+
+
+        # return interp+random_walk
+        return interp
