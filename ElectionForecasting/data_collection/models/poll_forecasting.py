@@ -99,7 +99,9 @@ def generate_linzer_model(days: np.ndarray, state_polls: pd.DataFrame, national_
 
         trace: InferenceData = pm.sample(draws=draws,
                                          tune=tune,
-                                         return_inferencedata=True)
+                                         return_inferencedata=True,
+                                         cores=1
+                                         )
     return linzer_model, trace
 
 
@@ -154,10 +156,10 @@ def plot_poll_forecast(days: np.ndarray,
     ax.fill_between(days, CI50[0], CI50[2], alpha=0.3, color='b', label='50% CI')
     start, end = ax.get_xlim()
     ax.xaxis.set_ticks(np.arange(start, end, 10))
-    ax.plot(CI[1], color='b', label='median')
-    ax.plot(mean, color='darkblue', label='mean')
-    ax.plot(state_polls, color='darkorange', label='State Polls')
-    ax.plot(national_polls, color='purple', label='National Polls')
+    ax.plot(days, CI[1], color='b', label='median')
+    ax.plot(days, mean, color='darkblue', label='mean')
+    ax.plot(days, state_polls, color='darkorange', label='State Polls')
+    ax.plot(days,national_polls, color='purple', label='National Polls')
     ax.legend()
     return ax
 

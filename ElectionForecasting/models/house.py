@@ -40,7 +40,7 @@ house_polls = compiler.obtain_house_poll_timeseries(party='Republican',
                                                     election_date=ELECTION_DATE,
                                                     starting_date=STARTING_DATE
                                                     )
-house_polls = house_polls.drop(columns=[col for col in house_polls.columns if col > STARTING_DATE+timedelta(60)])
+
 
 
 generic_ballot = compiler.obtain_generic_house_poll_timeseries(party='Republican',
@@ -49,7 +49,9 @@ generic_ballot = compiler.obtain_generic_house_poll_timeseries(party='Republican
                                                                )
 generic_ballot = compiler.interpolate_district_polls(generic_ballot, ELECTION_DATE)
 generic_ballot = compiler.window_district_timeseries(generic_ballot)
-generic_ballot = generic_ballot.drop(columns=[col for col in generic_ballot.columns if col > STARTING_DATE+timedelta(60)
+
+house_polls = house_polls.drop(columns=[col for col in house_polls.columns if col > STARTING_DATE+timedelta(30)])
+generic_ballot = generic_ballot.drop(columns=[col for col in generic_ballot.columns if col > STARTING_DATE+timedelta(30)
                                               ])
 
 
@@ -57,7 +59,8 @@ generic_ballot = generic_ballot.drop(columns=[col for col in generic_ballot.colu
 previous_republican: pd.DataFrame = cook_pvi_data[['New PVI Raw']] + 46.9
 previous_republican = previous_republican.rename(columns={'New PVI Raw': 'PreviousRepublican'})
 house_polls = house_polls.join(previous_republican)
-house_polls = house_polls.loc[['Florida-13']]
+# house_polls = house_polls.loc[['Florida-13']]
+house_polls = house_polls.iloc[:2]
 
 # house_polls[DATES] = house_polls[DATES].fillna(value=0) + generic_ballot[DATES] + house_polls.loc['Florida-13', 'PreviousRepublican']
 
@@ -67,18 +70,20 @@ print(generic_ballot)
 print(house_polls)
 
 
-if __name__=='__main__':
-    linzer_model, trace = generate_linzer_model(generic_ballot,
+if __name__ == '__main__':
+    days = generic_ballot.columns.values
+    sample_district = house_polls.index[0]
+    linzer_model, trace = generate_linzer_model(days,
                                                 house_polls,
-                                                generic_ballot,
+                                                generic_ballot.values,
                                                 gdp=-9.08374,
                                                 net_approval=-13,
                                                 incumbent=1,
                                                 president_incumbent_party='Democratic')
 
-    polls_forecast = linzer_model_predict_from_trace(linzer_model, trace, 'Florida-13')
-    plot = plot_poll_forecast(generic_ballot,
+    polls_forecast = linzer_model_predict_from_trace(linzer_model, trace, sample_district)
+    plot = plot_poll_forecast(days,
                               polls_forecast,
-                              house_polls.loc['Florida-13'],
-                              generic_ballot)
+                              house_polls.drop(columns=['PreviousRepublican']).loc[sample_district].values,
+                              generic_ballot.loc['Generic Ballot'].values)
     plt.show()
