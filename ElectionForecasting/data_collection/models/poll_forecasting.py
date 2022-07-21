@@ -43,7 +43,7 @@ def generate_linzer_model(days: np.ndarray, state_polls: pd.DataFrame, national_
     :return:
     """
     state_observed = state_polls.drop(columns=['PreviousRepublican']).applymap(logit)
-    national_observed = logit(national_polls) - state_observed
+    # national_observed = logit(national_polls) - state_observed
 
     with pm.Model() as linzer_model:
         σ_δ = pm.HalfNormal('σ_δ', .01)
@@ -66,11 +66,17 @@ def generate_linzer_model(days: np.ndarray, state_polls: pd.DataFrame, national_
                                )
         tfc_republican = tfc if president_incumbent_party == 'Republican' else 100 - tfc
 
+        national_observed = logit(national_polls) - logit(tfc_republican.tag.test_value/100)
+
         fundamental_intercept = pm.Normal('fund_intercept', mu=-1.460050, sigma=0.008357)
         fundamental_tfc_coef = pm.Normal('fund_tfc_coef', mu=0.005842, sigma=0.000164)
         # We set this as constant because the standard deviation is so small we get underflows
         fundamental_prev_repub_coef = 0.023978
         # fundamental_prev_repub_coef = pm.Normal('fund_prev_repub_coef', mu=0.023978, sigma=0.000034)
+
+        μ_δ = pm.GaussianRandomWalk('μ_δ', sigma=σ_δ, shape=len(days))
+        # δ = pm.Normal(f'δ_{name}', mu=μ_δ, sigma=σ_δ, observed=national_observed.loc[name].values[::-1])
+        δ = pm.Normal('δ', mu=μ_δ, sigma=σ_δ, observed=national_observed[::-1])
 
         for name in state_polls.index:
             unscaled_fundamental_distribution = pm.Deterministic(f'fundamental_{name}',
@@ -88,12 +94,8 @@ def generate_linzer_model(days: np.ndarray, state_polls: pd.DataFrame, national_
                                         init=β_J,
                                         shape=len(days)
                                         )
-            μ_δ = pm.GaussianRandomWalk(f'μ_δ_{name}',
-                                        sigma=σ_δ,
-                                        shape=len(days)
-                                        )
+
             β = pm.Normal(f'β_{name}', mu=μ_β, sigma=σ_β, observed=state_observed.loc[name].values[::-1])
-            δ = pm.Normal(f'δ_{name}', mu=μ_δ, sigma=σ_δ, observed=national_observed.loc[name].values[::-1])
             π = pm.Deterministic(f'π_{name}', pm.invlogit(β + δ))
             # y_k = pm.Binomial('y_k', p=π[-1], n=1000)
 
@@ -118,7 +120,8 @@ def linzer_model_predict_from_trace(linzer_model: pm.Model,
         ppc = pm.sample_posterior_predictive(trace)
     # Since the Beta and Delta (State and National Poll) forecasts work backward in time as they walk, we return the
     # reverse of their sums
-    return inv_logit(ppc[f'β_{name}'] + ppc[f'δ_{name}'])[:, ::-1]
+    # return inv_logit(ppc[f'β_{name}'] + ppc[f'δ_{name}'])[:, ::-1]
+    return inv_logit(ppc[f'β_{name}'] + ppc['δ'])[:, ::-1]
 
 
 def get_final_polls_forecasted(trace: InferenceData, name: str) -> InferenceData:
@@ -159,7 +162,7 @@ def plot_poll_forecast(days: np.ndarray,
     ax.plot(days, CI[1], color='b', label='median')
     ax.plot(days, mean, color='darkblue', label='mean')
     ax.plot(days, state_polls, color='darkorange', label='State Polls')
-    ax.plot(days,national_polls, color='purple', label='National Polls')
+    ax.plot(days, national_polls, color='purple', label='National Polls')
     ax.legend()
     return ax
 
@@ -179,7 +182,6 @@ if __name__ == '__main__':
     # District 2 will be exactly 10 points lower than 1
     sample_state_poll2 = np.clip(sample_state_polls1 - 0.10, a_min=0.01, a_max=.99)
 
-
     # Compile all the district data
     district_names = ['District 1', 'District 2']
     sample_state_polls_all = np.stack([sample_state_polls1,
@@ -192,14 +194,15 @@ if __name__ == '__main__':
                                          index=district_names,
                                          columns=[f'day_{day}' for day in sample_days]
                                          )
-    sample_state_polls_df['PreviousRepublican'] = pd.Series(data=['60']*len(district_names),
+    sample_state_polls_df['PreviousRepublican'] = pd.Series(data=['60'] * len(district_names),
                                                             index=district_names).astype(float)
     print(sample_state_polls_df)
     # state_polls[-10:] = None
     # We only record national polls (on a 10-day cycle) on days 4,5,6,7,8,9, and we don't know the last 20 days
     sample_national_polls[::10] = None
     sample_national_polls[::5] = None
-    sample_national_polls[-20:] = None
+    sample_national_polls[-5:] = None
+    # sample_national_polls[-20:] = None
     linzer_model, trace = generate_linzer_model(sample_days,
                                                 sample_state_polls_df,
                                                 sample_national_polls,
@@ -212,4 +215,10 @@ if __name__ == '__main__':
                               polls_forecast,
                               sample_state_polls1,
                               sample_national_polls)
+    polls_forecast2 = linzer_model_predict_from_trace(linzer_model, trace, 'District 2')
+    plot2 = plot_poll_forecast(sample_days,
+                               polls_forecast2,
+                               sample_state_poll2,
+                               sample_national_polls)
+
     plt.show()
